@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Disclosure
+    url: https://github.com/OWNER/REPO/security/policy
+    about: Please report security vulnerabilities through private channels.
+  - name: Discussions
+    url: https://github.com/OWNER/REPO/discussions
+    about: Ask and answer questions in GitHub Discussions.
