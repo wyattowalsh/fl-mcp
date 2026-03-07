@@ -51,7 +51,7 @@ jobs:
           node-version: '20'
       - uses: pnpm/action-setup@v4
         with:
-          version: '9'
+          version: '9.15.4'
       - name: Install docs dependencies
         run: pnpm --dir docs install --no-frozen-lockfile
       - name: Generate references
