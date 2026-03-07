@@ -1,0 +1,22 @@
+import { DocsLayout } from 'fumadocs-ui/layout';
+import type { ReactNode } from 'react';
+import { source } from '@/lib/source';
+
+export default function Layout({ children }: { children: ReactNode }) {
+  return (
+    <DocsLayout
+      tree={source.pageTree}
+      nav={{
+        title: 'FL MCP Docs',
+        url: '/'
+      }}
+      links={[
+        { text: 'Docs Home', url: '/docs' },
+        { text: 'Roadmap', url: '/docs/roadmap' },
+        { text: 'Contributing', url: '/docs/contributing' }
+      ]}
+    >
+      {children}
+    </DocsLayout>
+  );
+}
