@@ -1,0 +1,9 @@
+name: Bug report
+description: Report a defect in FL MCP
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+    validations:
+      required: true

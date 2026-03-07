@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "changes": {
+      "type": "string"
+    },
+    "execution_policy": {
+      "type": "string"
+    },
+    "freshness_policy": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string"
+    },
+    "preconditions": {
+      "type": "string"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "safety_mode": {
+      "type": "string"
+    },
+    "schema_version": {
+      "type": "string"
+    },
+    "target_snapshot_id": {
+      "type": "string"
+    }
+  },
+  "title": "TransactionEnvelope",
+  "type": "object"
+}

@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "checkpoint_id": {
+      "type": "string"
+    },
+    "diff_summary": {
+      "type": "string"
+    },
+    "errors": {
+      "type": "string"
+    },
+    "per_domain_results": {
+      "type": "string"
+    },
+    "rollback_capability": {
+      "type": "string"
+    },
+    "snapshot_after": {
+      "type": "string"
+    },
+    "snapshot_before": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "transaction_id": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "string"
+    }
+  },
+  "title": "TransactionResult",
+  "type": "object"
+}
