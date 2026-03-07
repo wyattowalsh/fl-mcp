@@ -1,13 +1,19 @@
 # fl-mcp
 
-## Schema generation
+Scaffold for FL MCP CLI, bundle layout, and macOS helper app.
 
-Pydantic v2 models are defined under `src/fl_mcp/schemas/` and can be exported to JSON Schema files with:
+## Layout
 
-```bash
-PYTHONPATH=src python -m fl_mcp.schemas.export
-```
+- `src/fl_mcp/cli/`: CLI package and subcommands.
+- `src/fl_mcp/interfaces/`: shared status/diagnostics contracts.
+- `fl-bundle/`: bundle scaffold for controller, piano-roll, vfx, and shared assets.
+- `helper/`: macOS Swift/SwiftUI shell project (`FL MCP Helper`).
+- `docs/interfaces.md`: CLI ↔ helper endpoint contract.
 
-Generated artifacts are written deterministically (sorted model registry and sorted JSON keys) to:
+## CLI commands (scaffold)
 
-- `docs/generated/schemas/`
+- `server run --mode stdio|http`
+- `install`
+- `doctor`
+- `config shell`
+- `diagnostics shell`

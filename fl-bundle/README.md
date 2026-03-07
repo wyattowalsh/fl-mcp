@@ -1,8 +1,8 @@
 # FL Bundle Scaffold
 
-- controller/
-- piano-roll/
-- vfx/
-- shared/
+This directory contains domain-specific bundle areas used by FL MCP tooling.
 
-Use `fl-mcp install` to deploy assets (implementation placeholder).
+- `controller/`: controller-side scripts, mappings, and transport glue.
+- `piano-roll/`: note, clip, and timing automation assets.
+- `vfx/`: visual effects bundle components and metadata.
+- `shared-assets/`: fonts, icons, schemas, and shared templates.

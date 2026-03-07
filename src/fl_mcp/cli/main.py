@@ -1,38 +1,34 @@
-"""Unified CLI for FL MCP."""
+"""Entry point for FL MCP CLI scaffold."""
 
-import typer
+from __future__ import annotations
 
-from fl_mcp.apps.diagnostics import diagnostics_summary
-from fl_mcp.persistence.db import init_db
-from fl_mcp.server.http import run_http
-from fl_mcp.server.stdio import run_stdio
+import argparse
 
-app = typer.Typer(help="Unified CLI for FL MCP")
+from . import config, diagnostics, doctor, install, server
 
 
-@app.command("server")
-def server(transport: str = typer.Option("stdio", help="stdio or http")) -> None:
-    """Run MCP server in selected transport mode."""
-    if transport == "stdio":
-        run_stdio()
-    elif transport == "http":
-        run_http()
-    else:
-        raise typer.BadParameter("transport must be stdio or http")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="fl-mcp", description="FL MCP command line interface")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    server.build_parser(subparsers)
+    install.build_parser(subparsers)
+    doctor.build_parser(subparsers)
+    config.build_parser(subparsers)
+    diagnostics.build_parser(subparsers)
+
+    return parser
 
 
-@app.command("install")
-def install() -> None:
-    """Install FL bundle shell assets."""
-    typer.echo("Install shell complete: deploy fl-bundle assets (placeholder)")
-
-
-@app.command("doctor")
-def doctor() -> None:
-    """Run diagnostics and env checks."""
-    init_db()
-    typer.echo(str(diagnostics_summary()))
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    handler = getattr(args, "handler", None)
+    if handler is None:
+        parser.print_help()
+        return 1
+    return int(handler(args) or 0)
 
 
 if __name__ == "__main__":
-    app()
+    raise SystemExit(main())
