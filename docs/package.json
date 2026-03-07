@@ -1,10 +1,29 @@
 {
-  "name": "fl-mcp-docs-app",
-  "private": true,
+  "name": "fl-mcp-docs",
   "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "build": "node scripts/build.mjs",
-    "check": "node scripts/check.mjs"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "docs:generate-reference": "node ./scripts/generate-reference.mjs",
+    "predev": "pnpm docs:generate-reference",
+    "prebuild": "pnpm docs:generate-reference"
+  },
+  "dependencies": {
+    "fumadocs-core": "^14.6.7",
+    "fumadocs-mdx": "^11.6.3",
+    "fumadocs-ui": "^14.6.7",
+    "next": "^15.2.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "typescript": "^5.8.2"
   }
 }

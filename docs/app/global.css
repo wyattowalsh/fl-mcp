@@ -1,0 +1,41 @@
+@import 'fumadocs-ui/css/ocean.css';
+
+:root {
+  --fd-primary: oklch(0.62 0.16 264);
+  --fd-accent: oklch(0.74 0.13 193);
+  --fd-background: oklch(0.98 0.01 255);
+}
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.landing {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 4rem 1.5rem;
+}
+
+.eyebrow {
+  color: var(--fd-primary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.card {
+  border: 1px solid color-mix(in oklab, var(--fd-primary), white 75%);
+  border-radius: 12px;
+  padding: 1rem;
+  text-decoration: none;
+  color: inherit;
+  background: white;
+}
