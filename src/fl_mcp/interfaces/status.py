@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 
-class HealthState(str, Enum):
+class HealthState(StrEnum):
     """Canonical service health values for status endpoints."""
 
     OK = "ok"
@@ -31,9 +31,7 @@ class HelperStatusPayload:
 
     service: str = "fl-mcp"
     health: HealthState = HealthState.OK
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(tz=timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
     checks: list[DiagnosticCheck] = field(default_factory=list)
     logs: list[str] = field(default_factory=list)
 
@@ -42,9 +40,7 @@ class HelperStatusPayload:
 
         data = asdict(self)
         data["health"] = self.health.value
-        data["checks"] = [
-            {**asdict(check), "state": check.state.value} for check in self.checks
-        ]
+        data["checks"] = [{**asdict(check), "state": check.state.value} for check in self.checks]
         return data
 
 

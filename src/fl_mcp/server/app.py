@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from fl_mcp.graph.model import ProjectGraph
-from fl_mcp.logging.setup import configure_logging
+from fl_mcp.logging import configure_logging
 from fl_mcp.resources.surface import runtime_health
 from fl_mcp.tools import public
 

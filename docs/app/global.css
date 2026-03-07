@@ -1,4 +1,4 @@
-@import 'fumadocs-ui/css/ocean.css';
+@import 'fumadocs-ui/style.css';
 
 :root {
   --fd-primary: oklch(0.62 0.16 264);

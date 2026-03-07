@@ -17,7 +17,6 @@ dependencies = [
   "sqlmodel>=0.0.22",
   "alembic>=1.13.0",
   "loguru>=0.7.2",
-  "typer>=0.12.3",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-fl-mcp = "fl_mcp.cli.main:app"
+fl-mcp = "fl_mcp.cli.main:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fl_mcp"]
@@ -42,6 +41,14 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "N", "A", "RUF"]
 
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
 [tool.mypy]
 python_version = "3.12"
 strict = true
@@ -50,5 +57,6 @@ namespace_packages = true
 mypy_path = "src"
 
 [tool.pytest.ini_options]
+pythonpath = ["src"]
 testpaths = ["tests"]
 addopts = "-q"

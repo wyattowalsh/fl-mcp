@@ -1,23 +1,19 @@
-"""Shared Pydantic schema models and schema export utilities."""
+"""Canonical schema surface for FL MCP."""
 
-from .provider_manifests import ProviderManifest, ProviderOperation, ProviderCapability
-from .results import MutationResult, TransactionResult
-from .snapshots import GraphSnapshot, SnapshotMetadata
-from .transactions import (
-    MutationModel,
-    RollbackClassification,
+from .provider import ProviderManifest
+from .snapshot import Snapshot
+from .transaction import (
+    DomainChange,
+    RollbackClass,
     TransactionEnvelope,
+    TransactionResult,
 )
 
 __all__ = [
-    "GraphSnapshot",
-    "MutationModel",
-    "MutationResult",
-    "ProviderCapability",
+    "DomainChange",
     "ProviderManifest",
-    "ProviderOperation",
-    "RollbackClassification",
-    "SnapshotMetadata",
+    "RollbackClass",
+    "Snapshot",
     "TransactionEnvelope",
     "TransactionResult",
 ]

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-python -m pytest
+uv run pytest -q
+uvx pre-commit run --all-files --show-diff-on-failure

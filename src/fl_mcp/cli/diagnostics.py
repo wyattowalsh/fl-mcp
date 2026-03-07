@@ -14,7 +14,9 @@ from fl_mcp.interfaces.status import (
 )
 
 
-def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def build_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     diagnostics_parser = subparsers.add_parser(
         "diagnostics", help="Status and diagnostics shell integrations"
     )
@@ -47,9 +49,7 @@ def handle_diagnostics_shell(args: argparse.Namespace) -> int:
     ).to_dict()
 
     payload["endpoint"] = (
-        HELPER_STATUS_ENDPOINT
-        if args.endpoint == "status"
-        else HELPER_DIAGNOSTICS_ENDPOINT
+        HELPER_STATUS_ENDPOINT if args.endpoint == "status" else HELPER_DIAGNOSTICS_ENDPOINT
     )
     print(json.dumps(payload, indent=2))
     return 0

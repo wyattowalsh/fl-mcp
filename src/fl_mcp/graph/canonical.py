@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 
 def serialize_graph(graph: dict[str, Any]) -> str:
@@ -18,4 +18,4 @@ def serialize_graph(graph: dict[str, Any]) -> str:
 
 
 def deserialize_graph(serialized: str) -> dict[str, Any]:
-    return json.loads(serialized)
+    return cast(dict[str, Any], json.loads(serialized))

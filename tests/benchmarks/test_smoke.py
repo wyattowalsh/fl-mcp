@@ -1,7 +1,7 @@
 import time
 
-from fl_mcp.transactions.planner import plan_changes
 from fl_mcp.schemas import DomainChange, TransactionEnvelope
+from fl_mcp.transactions.planner import plan_changes
 
 
 def test_planner_smoke_speed() -> None:

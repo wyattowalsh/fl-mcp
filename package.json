@@ -1,13 +1,11 @@
 {
-  "name": "fl-mcp-docs",
+  "name": "fl-mcp",
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "docs:dev": "node docs/scripts/dev.mjs",
-    "docs:build": "node docs/scripts/build.mjs",
-    "docs:check": "node docs/scripts/check.mjs"
+    "docs:generate": "pnpm --dir docs docs:generate-reference",
+    "docs:build": "pnpm --dir docs build",
+    "docs:dev": "pnpm --dir docs dev"
   },
-  "devDependencies": {
-    "fumadocs": "^14.0.0"
-  }
+  "packageManager": "pnpm@9.15.4"
 }

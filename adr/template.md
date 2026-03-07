@@ -26,15 +26,15 @@ Describe the chosen option and why.
 
 ### Positive
 
-- 
+-
 
 ### Negative
 
-- 
+-
 
 ### Neutral
 
-- 
+-
 
 ## Rollout / Migration Plan
 
@@ -50,4 +50,4 @@ Describe the chosen option and why.
 
 ## References
 
-- 
+-

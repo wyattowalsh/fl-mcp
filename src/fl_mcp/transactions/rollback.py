@@ -2,43 +2,42 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from dataclasses import dataclass
 
-from fl_mcp.schemas.transactions import RollbackClassification
+from fl_mcp.schemas import RollbackClass
 
 
-class RollbackPolicyMetadata(BaseModel):
+@dataclass(frozen=True, slots=True)
+class RollbackPolicyMetadata:
     """Behavioral metadata for rollback orchestration."""
 
-    model_config = ConfigDict(extra="forbid")
-
-    classification: RollbackClassification = Field(...)
-    requires_checkpoint: bool = Field(...)
-    supports_automatic_rollback: bool = Field(...)
-    description: str = Field(...)
+    classification: RollbackClass
+    requires_checkpoint: bool
+    supports_automatic_rollback: bool
+    description: str
 
 
-ROLLBACK_POLICY_BY_CLASSIFICATION: dict[RollbackClassification, RollbackPolicyMetadata] = {
-    RollbackClassification.fully_transactional: RollbackPolicyMetadata(
-        classification=RollbackClassification.fully_transactional,
+ROLLBACK_POLICY_BY_CLASSIFICATION: dict[RollbackClass, RollbackPolicyMetadata] = {
+    "fully_transactional": RollbackPolicyMetadata(
+        classification="fully_transactional",
         requires_checkpoint=False,
         supports_automatic_rollback=True,
         description="Change is atomic and can be rolled back automatically.",
     ),
-    RollbackClassification.checkpointed: RollbackPolicyMetadata(
-        classification=RollbackClassification.checkpointed,
+    "checkpointed": RollbackPolicyMetadata(
+        classification="checkpointed",
         requires_checkpoint=True,
         supports_automatic_rollback=True,
         description="Change requires explicit checkpoint before apply.",
     ),
-    RollbackClassification.best_effort: RollbackPolicyMetadata(
-        classification=RollbackClassification.best_effort,
+    "best_effort": RollbackPolicyMetadata(
+        classification="best_effort",
         requires_checkpoint=False,
         supports_automatic_rollback=False,
         description="Rollback may be partial; compensating action may be needed.",
     ),
-    RollbackClassification.unsafe_raw: RollbackPolicyMetadata(
-        classification=RollbackClassification.unsafe_raw,
+    "unsafe_raw": RollbackPolicyMetadata(
+        classification="unsafe_raw",
         requires_checkpoint=True,
         supports_automatic_rollback=False,
         description="Raw unsafe mutation with no guaranteed rollback semantics.",
@@ -46,7 +45,6 @@ ROLLBACK_POLICY_BY_CLASSIFICATION: dict[RollbackClassification, RollbackPolicyMe
 }
 
 
-def rollback_policy_for(classification: RollbackClassification) -> RollbackPolicyMetadata:
+def rollback_policy_for(classification: RollbackClass) -> RollbackPolicyMetadata:
     """Resolve rollback policy metadata for a classification."""
-
     return ROLLBACK_POLICY_BY_CLASSIFICATION[classification]

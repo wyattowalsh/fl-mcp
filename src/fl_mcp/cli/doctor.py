@@ -8,7 +8,9 @@ import json
 from fl_mcp.interfaces.status import DiagnosticCheck, HealthState, HelperStatusPayload
 
 
-def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def build_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     doctor_parser = subparsers.add_parser("doctor", help="Run diagnostics")
     doctor_parser.add_argument(
         "--format",

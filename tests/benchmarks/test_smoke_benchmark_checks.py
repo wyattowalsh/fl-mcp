@@ -8,10 +8,7 @@ from fl_mcp.graph.canonical import serialize_graph
 def test_canonical_graph_serialization_smoke_benchmark() -> None:
     graph = {
         "nodes": [{"id": str(i)} for i in range(250)],
-        "edges": [
-            {"source": str(i), "target": str(i + 1), "type": "link"}
-            for i in range(249)
-        ],
+        "edges": [{"source": str(i), "target": str(i + 1), "type": "link"} for i in range(249)],
     }
 
     start = perf_counter()

@@ -1,10 +1,10 @@
 # Design Proposal: <Title>
 
-- **Author(s)**: 
+- **Author(s)**:
 - **Status**: Draft | Review | Approved | Implemented
-- **Reviewers**: 
+- **Reviewers**:
 - **Created**: YYYY-MM-DD
-- **Target Release**: 
+- **Target Release**:
 
 ## Problem Statement
 
@@ -12,11 +12,11 @@ Describe the user and technical problem.
 
 ## Goals
 
-- 
+-
 
 ## Non-Goals
 
-- 
+-
 
 ## Proposed Design
 
@@ -66,4 +66,4 @@ Metrics, logs, traces, alerts, SLOs.
 
 ## Open Questions
 
-- 
+-

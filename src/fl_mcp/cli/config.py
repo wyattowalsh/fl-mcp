@@ -6,7 +6,9 @@ import argparse
 import json
 
 
-def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def build_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     config_parser = subparsers.add_parser("config", help="Inspect and manage CLI config")
     config_subparsers = config_parser.add_subparsers(dest="config_command", required=True)
 

@@ -3,18 +3,22 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fl_mcp.config import RuntimeConfig
 
 
 @dataclass(slots=True, frozen=True)
 class RuntimeHealth:
-    status: str
-    service: str
-    version: str
-    environment: str
-    timestamp: str
+    status: str = "ok"
+    service: str = "fl-mcp"
+    version: str = "0.1.0"
+    environment: str = "dev"
+    timestamp: str = ""
+
+    def model_dump(self) -> dict[str, str]:
+        """Return a dict compatible with Pydantic-style dumps."""
+        return asdict(self)
 
 
 def get_runtime_health(config: RuntimeConfig) -> RuntimeHealth:
@@ -23,7 +27,7 @@ def get_runtime_health(config: RuntimeConfig) -> RuntimeHealth:
         service=config.service_name,
         version=config.service_version,
         environment=config.environment,
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
     )
 
 

@@ -1,18 +1,32 @@
 {
+  "description": "Provider registration model.",
   "properties": {
     "capabilities": {
-      "type": "string"
+      "items": {
+        "type": "string"
+      },
+      "title": "Capabilities",
+      "type": "array"
     },
     "maturity": {
+      "default": "experimental",
+      "title": "Maturity",
       "type": "string"
     },
     "name": {
+      "title": "Name",
       "type": "string"
     },
     "version": {
+      "title": "Version",
       "type": "string"
     }
   },
+  "required": [
+    "name",
+    "version",
+    "capabilities"
+  ],
   "title": "ProviderManifest",
   "type": "object"
 }

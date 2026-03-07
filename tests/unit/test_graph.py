@@ -8,4 +8,5 @@ def test_graph_projection_roundtrip() -> None:
     )
     proj = graph.to_projection("mixer")
     assert proj["domain"] == "mixer"
+    assert isinstance(proj["nodes"], list)
     assert len(proj["nodes"]) == 1

@@ -1,5 +1,16 @@
 {
-  "name": "fl-mcp",
-  "version": "0.1.0a0",
-  "transports": ["stdio", "http-stream"]
+  "$schema": "https://gofastmcp.com/public/schemas/fastmcp.json/v1.json",
+  "source": {
+    "type": "filesystem",
+    "path": "src/fl_mcp/server/factory.py",
+    "entrypoint": "create_default_server"
+  },
+  "environment": {
+    "type": "uv",
+    "project": "."
+  },
+  "deployment": {
+    "transport": "stdio",
+    "log_level": "INFO"
+  }
 }

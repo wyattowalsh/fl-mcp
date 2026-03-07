@@ -4,7 +4,6 @@ from sqlmodel import SQLModel, create_engine
 
 from fl_mcp.config.settings import settings
 
-
 engine = create_engine(settings.database_url, echo=False)
 
 

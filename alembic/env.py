@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from alembic import context
+from typing import Any, cast
+
 from sqlalchemy import engine_from_config, pool
 from sqlmodel import SQLModel
 
+from alembic import context
 from fl_mcp.persistence import models  # noqa: F401
 
 config = context.config
@@ -18,7 +20,12 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    connectable = engine_from_config(config.get_section(config.config_ini_section), prefix="sqlalchemy.", poolclass=pool.NullPool)
+    section = cast(dict[str, Any], config.get_section(config.config_ini_section) or {})
+    connectable = engine_from_config(
+        section,
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():

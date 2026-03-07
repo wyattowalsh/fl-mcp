@@ -11,15 +11,24 @@ This document captures the **locked** public MCP interface and is the canonical 
 
 ### Resources
 
-At present, the public resource surface is intentionally minimal.
+The public resource surface is intentionally minimal:
 
-- **None exported as stable public resources** (internal or experimental resources must remain non-public until explicitly promoted).
+- `runtime://health`
 
 ### Tools
 
-At present, the public tool surface is intentionally minimal.
+The public tool surface is intentionally minimal and resource-first aligned:
 
-- **None exported as stable public tools** (internal orchestration tools must remain non-public until explicitly promoted).
+- `query_project`
+- `plan_changes`
+- `apply_changes`
+- `render_project`
+- `analyze_audio`
+- `inspect_runtime`
+- `manage_providers`
+- `runtime_health`
+
+Any additional resources/tools listed in roadmap or design documents are planned surfaces and are **not** public until implemented and recorded here.
 
 ## Stability Contract
 

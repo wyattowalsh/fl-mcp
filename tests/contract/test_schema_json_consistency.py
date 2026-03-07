@@ -6,4 +6,5 @@ def test_schema_json_generation_is_consistent() -> None:
     second = generate_schema_json()
 
     assert first == second
-    assert '"$schema"' in first
+    assert '"title": "TransactionEnvelope"' in first
+    assert '"request_id"' in first

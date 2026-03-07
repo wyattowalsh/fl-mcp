@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
-SUPPORTED_TRANSPORTS = {"stdio", "streamable_http"}
+SUPPORTED_TRANSPORTS = {"stdio", "streamable-http"}
+TRANSPORT_ALIASES = {
+    "streamable_http": "streamable-http",
+}
 
 
 @dataclass(frozen=True)
@@ -15,7 +17,8 @@ class ServerRuntime:
 
 
 def bootstrap_server(transport: str) -> ServerRuntime:
-    if transport not in SUPPORTED_TRANSPORTS:
+    normalized_transport = TRANSPORT_ALIASES.get(transport, transport)
+    if normalized_transport not in SUPPORTED_TRANSPORTS:
         msg = f"Unsupported transport: {transport}"
         raise ValueError(msg)
-    return ServerRuntime(transport=transport, started=True)
+    return ServerRuntime(transport=normalized_transport, started=True)

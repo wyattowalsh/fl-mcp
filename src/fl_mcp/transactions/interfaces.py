@@ -2,30 +2,37 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, TypedDict
 
-from pydantic import ConfigDict, Field
-
-from fl_mcp.schemas.results import MutationResult
-from fl_mcp.schemas.transactions import MutationModel, TransactionEnvelope
+from fl_mcp.schemas import RollbackClass, TransactionEnvelope
 
 
-class PlannerMutationIntent(MutationModel):
+class PlannerMutationIntent(TypedDict):
     """Planner-produced mutation intent."""
 
-    model_config = ConfigDict(extra="forbid")
+    domain: str
+    operation: str
+    rollback_class: RollbackClass
+    target_node_id: str
+    rationale: str
 
-    target_node_id: str = Field(..., description="Graph node that mutation targets.")
-    rationale: str = Field(..., description="Planner explanation for the mutation.")
 
-
-class ApplyMutationRequest(MutationModel):
+class ApplyMutationRequest(TypedDict):
     """Apply-stage mutation input containing execution details."""
 
-    model_config = ConfigDict(extra="forbid")
+    domain: str
+    operation: str
+    rollback_class: RollbackClass
+    planned_mutation_id: str
+    execution_provider: str
 
-    planned_mutation_id: str = Field(..., description="Planner mutation identifier.")
-    execution_provider: str = Field(..., description="Provider implementing this mutation.")
+
+class MutationResult(TypedDict):
+    """Execution status for an apply operation."""
+
+    mutation_id: str
+    success: bool
+    rollback_class: RollbackClass
 
 
 class PlannerModelInterface(Protocol):

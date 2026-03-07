@@ -1,6 +1,11 @@
-.PHONY: test quality
+.PHONY: test quality docs
 
 test:
-	python -m pytest
+	uv run pytest -q
 
-quality: test
+quality:
+	./scripts/quality.sh
+
+docs:
+	pnpm --dir docs docs:generate-reference
+	pnpm --dir docs build

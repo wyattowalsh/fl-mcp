@@ -14,7 +14,6 @@ repos:
     hooks:
       - id: ruff
         args: [--fix]
-      - id: ruff-format
 
   - repo: https://github.com/PyCQA/isort
     rev: 6.0.1
@@ -32,9 +31,18 @@ repos:
       - id: mypy
         additional_dependencies:
           - types-PyYAML
+          - pydantic>=2.8.0
+          - pydantic-settings>=2.3.0
+          - sqlmodel>=0.0.22
+          - alembic>=1.13.0
+          - pytest>=8.2.0
 
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.37.0
     hooks:
       - id: yamllint
-        args: ["-d", "{extends: default, rules: {line-length: {max: 120}}}"]
+        args:
+          [
+            "-d",
+            "{extends: default, rules: {line-length: {max: 120}, document-start: disable, truthy: disable}}",
+          ]

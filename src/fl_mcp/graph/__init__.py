@@ -1,12 +1,12 @@
-"""Canonical project graph models and snapshot serialization."""
+"""Canonical project graph models and serialization helpers."""
 
-from .models import GraphEdge, GraphNode, ProjectGraph
-from .serialization import deserialize_snapshot, serialize_snapshot
+from .canonical import deserialize_graph, serialize_graph
+from .model import GraphEdge, GraphNode, ProjectGraph
 
 __all__ = [
     "GraphEdge",
     "GraphNode",
     "ProjectGraph",
-    "deserialize_snapshot",
-    "serialize_snapshot",
+    "deserialize_graph",
+    "serialize_graph",
 ]

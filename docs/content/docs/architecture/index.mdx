@@ -1,0 +1,20 @@
+---
+title: Architecture
+description: High-level architecture and system boundaries.
+---
+
+FL MCP is organized around a small public MCP surface, a canonical project graph,
+and transaction-safe mutations.
+
+## Core Boundaries
+
+- `src/fl_mcp/server`: transport bootstrap and runtime server wiring.
+- `src/fl_mcp/resources` and `src/fl_mcp/tools`: public MCP read/write surface.
+- `src/fl_mcp/transactions`: planning + apply workflow with rollback semantics.
+- `src/fl_mcp/schemas`: canonical typed contracts for graph and transactions.
+- `src/fl_mcp/providers`: provider runtime extension point.
+
+## Architecture Governance
+
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Reuse Audit](/docs/architecture/reuse-audit)

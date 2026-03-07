@@ -1,18 +1,48 @@
-"""Loguru setup helpers."""
+"""Structured logging helpers used by CLI and server startup paths."""
+
+from __future__ import annotations
 
 import json
-import sys
+import logging
+from datetime import UTC, datetime
 from typing import Any
 
-from loguru import logger
+
+class JsonFormatter(logging.Formatter):
+    """Small JSON formatter for startup/runtime logs."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "timestamp": datetime.now(UTC).isoformat(),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        for key in (
+            "event",
+            "transport",
+            "host",
+            "port",
+            "path",
+            "service",
+            "version",
+            "environment",
+        ):
+            if hasattr(record, key):
+                payload[key] = getattr(record, key)
+        return json.dumps(payload, default=str)
 
 
-def configure_logging(level: str = "INFO") -> None:
-    """Configure structured JSON logging and local console output."""
-    logger.remove()
-    logger.add(sys.stderr, level=level, format="<green>{time}</green> | <level>{level}</level> | {message}")
+def configure_logging(level: str | int = "INFO") -> None:
+    """Configure root logger with JSON output for consistent transport logs."""
+    if isinstance(level, str):
+        resolved_level = getattr(logging, level.upper(), logging.INFO)
+    else:
+        resolved_level = level
 
-
-def log_json(event: str, **payload: Any) -> None:
-    """Emit a structured JSON log event."""
-    logger.info(json.dumps({"event": event, **payload}, sort_keys=True))
+    handler = logging.StreamHandler()
+    handler.setFormatter(JsonFormatter())
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(resolved_level)
+    root.addHandler(handler)

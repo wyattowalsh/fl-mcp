@@ -1,11 +1,15 @@
 """Apply engine with checkpoint metadata."""
 
+from typing import Literal
+
 from fl_mcp.schemas import TransactionEnvelope, TransactionResult
 
 
 def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
     """Apply a planned transaction (skeleton)."""
-    status = "applied" if envelope.execution_policy == "all-or-nothing" else "partially_applied"
+    status: Literal["applied", "partially_applied"] = (
+        "applied" if envelope.execution_policy == "all-or-nothing" else "partially_applied"
+    )
     return TransactionResult(
         transaction_id=f"tx-{envelope.request_id}",
         status=status,

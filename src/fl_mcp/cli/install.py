@@ -6,7 +6,9 @@ import argparse
 import json
 
 
-def build_parser(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+def build_parser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> None:
     install_parser = subparsers.add_parser("install", help="Install dependencies and local assets")
     install_parser.add_argument(
         "--target",

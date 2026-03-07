@@ -1,18 +1,12 @@
-"""Planner/apply interfaces and rollback metadata helpers."""
+"""Transaction planning and apply interfaces."""
 
-from .interfaces import (
-    ApplyModelInterface,
-    ApplyMutationRequest,
-    PlannerModelInterface,
-    PlannerMutationIntent,
-)
-from .rollback import RollbackPolicyMetadata, rollback_policy_for
+from .apply import apply_changes
+from .envelope import rollback_classification_presence, validate_envelope
+from .planner import plan_changes
 
 __all__ = [
-    "ApplyModelInterface",
-    "ApplyMutationRequest",
-    "PlannerModelInterface",
-    "PlannerMutationIntent",
-    "RollbackPolicyMetadata",
-    "rollback_policy_for",
+    "apply_changes",
+    "plan_changes",
+    "rollback_classification_presence",
+    "validate_envelope",
 ]

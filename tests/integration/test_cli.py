@@ -1,8 +1,5 @@
-from typer.testing import CliRunner
-
-from fl_mcp.cli.main import app
+from fl_mcp.cli.main import main
 
 
 def test_doctor_runs() -> None:
-    result = CliRunner().invoke(app, ["doctor"])
-    assert result.exit_code == 0
+    assert main(["doctor", "--format", "json"]) == 0
