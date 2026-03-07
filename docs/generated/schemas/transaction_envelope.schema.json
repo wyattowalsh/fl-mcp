@@ -1,0 +1,36 @@
+{
+  "$defs": {
+    "MutationModel": {
+      "$ref": "./mutation_model.schema.json"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dry_run": {
+      "default": false,
+      "type": "boolean"
+    },
+    "initiated_by": {
+      "type": "string"
+    },
+    "mutations": {
+      "items": {
+        "$ref": "#/$defs/MutationModel"
+      },
+      "type": "array"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "transaction_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "transaction_id",
+    "project_id",
+    "initiated_by"
+  ],
+  "title": "TransactionEnvelope",
+  "type": "object"
+}

@@ -1,10 +1,13 @@
 # fl-mcp
 
-FastMCP server scaffolding with a unified CLI for `stdio` and `streamable-http` transports.
+## Schema generation
 
-## Usage
+Pydantic v2 models are defined under `src/fl_mcp/schemas/` and can be exported to JSON Schema files with:
 
 ```bash
-python -m fl_mcp.cli stdio
-python -m fl_mcp.cli streamable-http --host 0.0.0.0 --port 8000 --path /mcp
+PYTHONPATH=src python -m fl_mcp.schemas.export
 ```
+
+Generated artifacts are written deterministically (sorted model registry and sorted JSON keys) to:
+
+- `docs/generated/schemas/`

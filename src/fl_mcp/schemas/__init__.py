@@ -1,11 +1,23 @@
-from .provider import ProviderManifest
-from .snapshot import Snapshot
-from .transaction import DomainChange, TransactionEnvelope, TransactionResult
+"""Shared Pydantic schema models and schema export utilities."""
+
+from .provider_manifests import ProviderManifest, ProviderOperation, ProviderCapability
+from .results import MutationResult, TransactionResult
+from .snapshots import GraphSnapshot, SnapshotMetadata
+from .transactions import (
+    MutationModel,
+    RollbackClassification,
+    TransactionEnvelope,
+)
 
 __all__ = [
-    "DomainChange",
+    "GraphSnapshot",
+    "MutationModel",
+    "MutationResult",
+    "ProviderCapability",
     "ProviderManifest",
-    "Snapshot",
+    "ProviderOperation",
+    "RollbackClassification",
+    "SnapshotMetadata",
     "TransactionEnvelope",
     "TransactionResult",
 ]

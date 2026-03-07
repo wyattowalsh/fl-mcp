@@ -1,0 +1,46 @@
+{
+  "$defs": {
+    "RollbackClassification": {
+      "enum": [
+        "fully_transactional",
+        "checkpointed",
+        "best_effort",
+        "unsafe_raw"
+      ],
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "details": {
+      "additionalProperties": true,
+      "type": "object"
+    },
+    "message": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mutation_id": {
+      "type": "string"
+    },
+    "rollback_classification": {
+      "$ref": "#/$defs/RollbackClassification"
+    },
+    "success": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "mutation_id",
+    "success",
+    "rollback_classification"
+  ],
+  "title": "MutationResult",
+  "type": "object"
+}

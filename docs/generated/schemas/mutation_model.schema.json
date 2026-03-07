@@ -1,0 +1,37 @@
+{
+  "$defs": {
+    "RollbackClassification": {
+      "enum": [
+        "fully_transactional",
+        "checkpointed",
+        "best_effort",
+        "unsafe_raw"
+      ],
+      "title": "RollbackClassification",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "metadata": {
+      "additionalProperties": true,
+      "title": "Metadata",
+      "type": "object"
+    },
+    "mutation_type": {
+      "description": "Canonical mutation type identifier.",
+      "title": "Mutation Type",
+      "type": "string"
+    },
+    "rollback_classification": {
+      "$ref": "#/$defs/RollbackClassification",
+      "description": "Rollback/checkpoint classification for this mutation."
+    }
+  },
+  "required": [
+    "mutation_type",
+    "rollback_classification"
+  ],
+  "title": "MutationModel",
+  "type": "object"
+}
