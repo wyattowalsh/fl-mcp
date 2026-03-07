@@ -1,0 +1,14 @@
+{
+  "name": "fl-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "bootstrap": "pnpm run bootstrap:python && pnpm run bootstrap:docs",
+    "bootstrap:python": "uv sync --dev",
+    "bootstrap:docs": "pnpm install",
+    "lint": "echo 'TODO: add lint workflow'",
+    "typecheck": "echo 'TODO: add typecheck workflow'",
+    "test": "echo 'TODO: add test workflow'"
+  }
+}

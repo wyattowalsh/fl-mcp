@@ -1,0 +1,9 @@
+{
+  "name": "fl-mcp",
+  "package": "fl-mcp",
+  "import": "fl_mcp",
+  "server": "fl-mcp",
+  "python": {
+    "requires": ">=3.12"
+  }
+}
