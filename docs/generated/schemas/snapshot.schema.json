@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "edges": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "string"
+    },
+    "snapshot_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "title": "Snapshot",
+  "type": "object"
+}

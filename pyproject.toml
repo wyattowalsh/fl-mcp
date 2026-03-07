@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fl-mcp"
+version = "0.1.0a0"
+description = "Local-only OSS MCP server for FL Studio"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [{name = "FL MCP Contributors"}]
+dependencies = [
+  "fastmcp>=3.0.0",
+  "pydantic>=2.8.0",
+  "pydantic-settings>=2.3.0",
+  "sqlmodel>=0.0.22",
+  "alembic>=1.13.0",
+  "loguru>=0.7.2",
+  "typer>=0.12.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.6.0",
+  "mypy>=1.11.0",
+  "pre-commit>=3.8.0",
+]
+
+[project.scripts]
+fl-mcp = "fl_mcp.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fl_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N", "A", "RUF"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+namespace_packages = true
+mypy_path = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

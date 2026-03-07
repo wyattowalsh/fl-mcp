@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "capabilities": {
+      "type": "string"
+    },
+    "maturity": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    }
+  },
+  "title": "ProviderManifest",
+  "type": "object"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "fl-mcp-docs",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "docs:dev": "node docs/scripts/dev.mjs",
+    "docs:build": "node docs/scripts/build.mjs",
+    "docs:check": "node docs/scripts/check.mjs"
+  },
+  "devDependencies": {
+    "fumadocs": "^14.0.0"
+  }
+}

@@ -1,0 +1,31 @@
+# Public API Inventory
+
+## Public resources
+
+- `project://snapshot`
+- `project://summary`
+- `project://domains/{transport,mixer,channels,patterns,piano-roll,plugins,vfx,audio}`
+- `runtime://health`
+- `runtime://diagnostics`
+- `runtime://config`
+- `transactions://recent`
+- `checkpoints://recent`
+- `providers://installed`
+- `schemas://public`
+
+## Public tools
+
+- `query_project`
+- `plan_changes`
+- `apply_changes`
+- `render_project`
+- `analyze_audio`
+- `inspect_runtime`
+- `manage_providers`
+
+## No accidental expansion policy
+
+Any new public tool/resource requires:
+1. ADR or design note.
+2. Inventory update in this file.
+3. Rationale proving no generic plan/apply alternative is sufficient.
