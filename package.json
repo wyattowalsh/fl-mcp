@@ -1,0 +1,11 @@
+{
+  "name": "fl-mcp",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "docs:generate": "pnpm --dir docs docs:generate-reference",
+    "docs:build": "pnpm --dir docs build",
+    "docs:dev": "pnpm --dir docs dev"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

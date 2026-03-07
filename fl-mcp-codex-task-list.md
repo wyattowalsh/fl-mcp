@@ -23,8 +23,8 @@ Use massively parallel subagents, but only where file overlap is low and depende
 
 Create these immediately:
 - `BUILD_STATUS.md`
-- `docs/content/architecture/public-api-inventory.mdx`
-- `docs/content/architecture/reuse-audit.mdx`
+- `docs/content/docs/architecture/public-api-inventory.mdx`
+- `docs/content/docs/architecture/reuse-audit.mdx`
 - `adr/index.md`
 
 `BUILD_STATUS.md` must track:

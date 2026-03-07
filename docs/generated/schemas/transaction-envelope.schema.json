@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "DomainChange": {
+      "description": "Typed domain change payload entry.",
+      "properties": {
+        "domain": {
+          "title": "Domain",
+          "type": "string"
+        },
+        "operation": {
+          "title": "Operation",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": true,
+          "title": "Payload",
+          "type": "object"
+        },
+        "rollback_class": {
+          "enum": [
+            "fully_transactional",
+            "checkpointed",
+            "best_effort",
+            "unsafe_raw"
+          ],
+          "title": "Rollback Class",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "operation",
+        "rollback_class"
+      ],
+      "title": "DomainChange",
+      "type": "object"
+    }
+  },
+  "description": "Canonical transaction request envelope.",
+  "properties": {
+    "changes": {
+      "items": {
+        "$ref": "#/$defs/DomainChange"
+      },
+      "title": "Changes",
+      "type": "array"
+    },
+    "execution_policy": {
+      "default": "all-or-nothing",
+      "enum": [
+        "all-or-nothing",
+        "allow-partial"
+      ],
+      "title": "Execution Policy",
+      "type": "string"
+    },
+    "freshness_policy": {
+      "default": "strict",
+      "enum": [
+        "strict",
+        "allow-stale"
+      ],
+      "title": "Freshness Policy",
+      "type": "string"
+    },
+    "metadata": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Metadata",
+      "type": "object"
+    },
+    "mode": {
+      "enum": [
+        "preview",
+        "apply"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "preconditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Preconditions",
+      "type": "array"
+    },
+    "request_id": {
+      "title": "Request Id",
+      "type": "string"
+    },
+    "safety_mode": {
+      "default": "standard",
+      "enum": [
+        "strict",
+        "standard",
+        "relaxed"
+      ],
+      "title": "Safety Mode",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_snapshot_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Snapshot Id"
+    }
+  },
+  "required": [
+    "request_id",
+    "mode",
+    "changes"
+  ],
+  "title": "TransactionEnvelope",
+  "type": "object"
+}

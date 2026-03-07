@@ -1,0 +1,10 @@
+# Replace with your actual GitHub team/user handles.
+* @OWNER/maintainers
+
+# CI and release infrastructure
+.github/workflows/ @OWNER/platform
+.pre-commit-config.yaml @OWNER/platform
+
+# Documentation and design records
+docs/ @OWNER/docs
+adr/ @OWNER/architecture

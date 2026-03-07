@@ -1,0 +1,42 @@
+name: Security and License Automation
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Run vulnerability audit
+        run: uvx pip-audit
+
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Export license report
+        run: uvx pip-licenses --format=markdown --with-license-file --output-file THIRD_PARTY_LICENSES.md
+      - name: Enforce license denylist
+        run: |
+          if grep -E "GPL|AGPL|SSPL" THIRD_PARTY_LICENSES.md; then
+            echo "Disallowed license found"
+            exit 1
+          fi

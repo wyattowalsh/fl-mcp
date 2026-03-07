@@ -1,0 +1,92 @@
+{
+  "description": "Canonical transaction execution result.",
+  "properties": {
+    "checkpoint_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Checkpoint Id"
+    },
+    "diff_summary": {
+      "additionalProperties": true,
+      "title": "Diff Summary",
+      "type": "object"
+    },
+    "errors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "per_domain_results": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Per Domain Results",
+      "type": "object"
+    },
+    "rollback_capability": {
+      "default": "available",
+      "title": "Rollback Capability",
+      "type": "string"
+    },
+    "snapshot_after": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Snapshot After"
+    },
+    "snapshot_before": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Snapshot Before"
+    },
+    "status": {
+      "enum": [
+        "planned",
+        "applied",
+        "failed",
+        "partially_applied"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "transaction_id": {
+      "title": "Transaction Id",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "transaction_id",
+    "status"
+  ],
+  "title": "TransactionResult",
+  "type": "object"
+}

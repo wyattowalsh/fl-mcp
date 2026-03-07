@@ -1,0 +1,35 @@
+{
+  "description": "Canonical graph snapshot.",
+  "properties": {
+    "edges": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Edges",
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "snapshot_id": {
+      "title": "Snapshot Id",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "snapshot_id",
+    "version"
+  ],
+  "title": "Snapshot",
+  "type": "object"
+}
