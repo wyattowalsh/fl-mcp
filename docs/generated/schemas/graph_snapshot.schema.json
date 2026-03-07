@@ -1,0 +1,22 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "graph_json": {"type": "string"},
+    "metadata": {
+      "additionalProperties": false,
+      "properties": {
+        "created_at": {"format": "date-time", "type": "string"},
+        "project_id": {"type": "string"},
+        "snapshot_id": {"type": "string"},
+        "source_transaction_id": {
+          "anyOf": [{"type": "string"}, {"type": "null"}]
+        }
+      },
+      "required": ["snapshot_id", "project_id", "created_at"],
+      "type": "object"
+    }
+  },
+  "required": ["metadata", "graph_json"],
+  "title": "GraphSnapshot",
+  "type": "object"
+}
