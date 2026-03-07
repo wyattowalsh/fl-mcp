@@ -1,17 +1,10 @@
 # fl-mcp
 
-Local-only OSS MCP server for FL Studio.
+FastMCP server scaffolding with a unified CLI for `stdio` and `streamable-http` transports.
 
-## Quick start
+## Usage
 
 ```bash
-uv sync
-uv run fl-mcp server --transport stdio
+python -m fl_mcp.cli stdio
+python -m fl_mcp.cli streamable-http --host 0.0.0.0 --port 8000 --path /mcp
 ```
-
-## Mission highlights
-
-- FastMCP 3.x server with stdio + streamable HTTP.
-- Resources-first read surface with minimal public tools.
-- Canonical project graph + canonical transaction envelope.
-- Unified CLI, SQLite persistence, provider runtime, and docs portal.
