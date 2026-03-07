@@ -1,0 +1,51 @@
+---
+title: Public API Inventory
+description: Locked public MCP surface for resources and tools.
+---
+
+# Public API Inventory
+
+This document captures the **locked** public MCP interface and is the canonical reference for what external clients may depend on.
+
+## Public MCP Surface (Locked)
+
+### Resources
+
+At present, the public resource surface is intentionally minimal.
+
+- **None exported as stable public resources** (internal or experimental resources must remain non-public until explicitly promoted).
+
+### Tools
+
+At present, the public tool surface is intentionally minimal.
+
+- **None exported as stable public tools** (internal orchestration tools must remain non-public until explicitly promoted).
+
+## Stability Contract
+
+- Public entries listed in this document are considered part of the compatibility contract.
+- Additions, removals, or semantic changes require an ADR and versioning impact assessment.
+- Internal implementation changes that do not alter public behavior do not require contract changes.
+
+## No Accidental Expansion Policy
+
+To prevent API sprawl and accidental client coupling:
+
+1. **Default deny:** new MCP resources/tools are private by default.
+2. **Explicit promotion required:** public exposure requires:
+   - an ADR describing rationale and lifecycle,
+   - update to this inventory,
+   - compatibility notes in release documentation.
+3. **Name and schema review gate:** promoted items must pass naming, schema, and ownership review.
+4. **Deprecation path mandatory:** any replacement/removal must define deprecation windows and migration guidance.
+5. **CI/documentation guard:** public-surface changes must fail review if this file is not updated in the same change set.
+
+## Change Control Checklist
+
+Before merging any public-surface change:
+
+- [ ] ADR approved.
+- [ ] Inventory updated in this file.
+- [ ] Compatibility impact documented.
+- [ ] Migration/deprecation notes prepared (if applicable).
+- [ ] Release notes entry prepared.
