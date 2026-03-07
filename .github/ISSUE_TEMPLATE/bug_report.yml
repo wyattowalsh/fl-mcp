@@ -1,9 +1,54 @@
-name: Bug report
-description: Report a defect in FL MCP
+name: Bug Report
+description: File a bug report to help us improve.
+title: "[Bug]: "
+labels:
+  - bug
 body:
-  - type: textarea
-    id: what-happened
+  - type: markdown
     attributes:
-      label: What happened?
+      value: |
+        Thanks for taking the time to fill out this bug report.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: A clear and concise description of the bug.
+      placeholder: What happened?
     validations:
       required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Provide exact steps so we can reproduce the issue.
+      placeholder: |
+        1. Run ...
+        2. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      placeholder: What happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Version, commit SHA, or release tag.
+      placeholder: v0.1.0
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / Output
+      description: Paste logs, stack traces, or screenshots.
+      render: shell

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":timezone(UTC)",
+    "group:allNonMajor"
+  ],
+  "labels": ["dependencies"],
+  "prConcurrentLimit": 10,
+  "rangeStrategy": "bump",
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    },
+    {
+      "matchManagers": ["pip_requirements", "poetry"],
+      "groupName": "python-dependencies"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"]
+  }
+}
