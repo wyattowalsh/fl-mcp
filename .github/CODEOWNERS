@@ -1,10 +1,10 @@
-# Replace with your actual GitHub team/user handles.
-* @OWNER/maintainers
+# Canonical individual ownership mapping.
+* @wyattowalsh
 
 # CI and release infrastructure
-.github/workflows/ @OWNER/platform
-.pre-commit-config.yaml @OWNER/platform
+.github/workflows/ @wyattowalsh
+.pre-commit-config.yaml @wyattowalsh
 
 # Documentation and design records
-docs/ @OWNER/docs
-adr/ @OWNER/architecture
+docs/ @wyattowalsh
+adr/ @wyattowalsh

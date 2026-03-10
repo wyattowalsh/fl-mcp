@@ -3,4 +3,32 @@ title: Troubleshooting
 description: Common failure modes and recovery steps.
 ---
 
-Capture known issues, diagnostics, and remediation runbooks here.
+## Purpose
+
+Provide deterministic diagnostics and remediation steps for common FL MCP issues.
+
+## Prerequisites
+
+- Reproduction steps for the failing behavior.
+- Access to CLI diagnostics output and docs check/build logs.
+- Current branch state with latest generated references.
+
+## Steps
+
+1. Reproduce the issue with minimal context.
+2. Run diagnostics and capture exact errors.
+3. Validate documentation health with `pnpm check`.
+4. Validate app compilation with `pnpm build`.
+5. Apply targeted fix and rerun failing checks.
+
+## Verification
+
+- Original failure no longer reproduces.
+- Diagnostics no longer report the prior error state.
+- Docs lint/check/build are all green.
+
+## Related Docs
+
+- [Getting Started](/docs/getting-started)
+- [Installation](/docs/installation)
+- [Reference](/docs/reference/api-schema)

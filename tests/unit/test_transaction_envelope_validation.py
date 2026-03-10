@@ -13,6 +13,23 @@ def test_transaction_envelope_validation_and_rollback_classifications() -> None:
 
     assert validate_envelope(envelope) is True
     assert validate_envelope({"request_id": "tx-2"}) is False
+    assert (
+        validate_envelope(
+            {
+                "request_id": "tx-3",
+                "mode": "invalid-mode",
+                "changes": [
+                    {"domain": "mixer", "operation": "noop", "rollback_class": "best_effort"}
+                ],
+            }
+        )
+        is False
+    )
 
     classifications = rollback_classification_presence()
-    assert {"validation_error", "provider_error", "timeout"}.issubset(classifications)
+    assert {
+        "fully_transactional",
+        "checkpointed",
+        "best_effort",
+        "unsafe_raw",
+    }.issubset(classifications)

@@ -5,38 +5,109 @@ on:
     - cron: '0 4 * * 1'
   workflow_dispatch:
 
+concurrency:
+  group: security-license-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
-  contents: read
+  contents: none
 
 jobs:
   dependency-audit:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Run vulnerability audit
-        run: uvx pip-audit
+        run: uv run --with pip-audit==2.10.0 pip-audit
 
   license-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: '3.12'
       - name: Sync dependencies
         run: uv sync --all-extras --dev
-      - name: Export license report
-        run: uvx pip-licenses --format=markdown --with-license-file --output-file THIRD_PARTY_LICENSES.md
+      - name: Export machine-readable license report
+        run: uv run --with pip-licenses==5.5.1 pip-licenses --format=json --output-file THIRD_PARTY_LICENSES.json
       - name: Enforce license denylist
         run: |
-          if grep -E "GPL|AGPL|SSPL" THIRD_PARTY_LICENSES.md; then
-            echo "Disallowed license found"
-            exit 1
-          fi
+          python - <<'PY'
+          import json
+          import re
+          import sys
+
+          denylist = {
+              "AGPL",
+              "AGPLv3",
+              "AGPL-1.0",
+              "AGPL-3.0",
+              "AGPL-3.0-only",
+              "AGPL-3.0-or-later",
+              "GNU Affero General Public License v3",
+              "GNU Affero General Public License v3 (AGPLv3)",
+              "GPL",
+              "GPLv2",
+              "GPLv3",
+              "GPL-1.0",
+              "GPL-2.0",
+              "GPL-2.0-only",
+              "GPL-2.0-or-later",
+              "GPL-3.0",
+              "GPL-3.0-only",
+              "GPL-3.0-or-later",
+              "GNU General Public License",
+              "GNU General Public License (GPL)",
+              "GNU General Public License v2",
+              "GNU General Public License v2 (GPLv2)",
+              "GNU General Public License v3",
+              "GNU General Public License v3 (GPLv3)",
+              "SSPL",
+              "SSPL-1.0",
+              "Server Side Public License",
+              "Server Side Public License (SSPL)",
+          }
+
+          with open("THIRD_PARTY_LICENSES.json", encoding="utf-8") as handle:
+              dependencies = json.load(handle)
+
+          violations = []
+          for dependency in dependencies:
+              raw_license = str(dependency.get("License", "")).strip()
+              if not raw_license:
+                  continue
+              tokens = [
+                  token.strip()
+                  for token in re.split(r"\s*(?:,|;|/|\\| and )\s*", raw_license)
+                  if token.strip()
+              ]
+              matched = sorted({token for token in tokens if token in denylist})
+              # Fail only when all declared license tokens are disallowed.
+              # This avoids false positives on dual-licensed packages where
+              # a permissive option is available.
+              if matched and len(matched) == len(set(tokens)):
+                  package_name = dependency.get("Name", "<unknown>")
+                  violations.append((package_name, matched))
+
+          if violations:
+              print("Disallowed license detected:")
+              for package_name, matched in violations:
+                  print(f"- {package_name}: {', '.join(matched)}")
+              sys.exit(1)
+
+          print("No disallowed licenses found.")
+          PY

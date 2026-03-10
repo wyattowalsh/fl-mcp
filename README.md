@@ -32,8 +32,8 @@ uv run fl-mcp server run --mode stdio
 ### Docs app
 
 ```bash
-pnpm --dir docs install --no-frozen-lockfile
-pnpm --dir docs docs:generate-reference
+pnpm --dir docs install --frozen-lockfile
+pnpm --dir docs check
 pnpm --dir docs dev
 ```
 

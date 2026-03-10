@@ -12,6 +12,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
       links={[
         { text: 'Docs Home', url: '/docs' },
+        { text: 'Providers', url: '/docs/providers' },
+        { text: 'ADR Index', url: '/docs/adr' },
         { text: 'Roadmap', url: '/docs/roadmap' },
         { text: 'Contributing', url: '/docs/contributing' }
       ]}

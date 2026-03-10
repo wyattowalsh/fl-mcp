@@ -4,13 +4,13 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node ./scripts/dev.mjs",
+    "build": "node ./scripts/build.mjs",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "pnpm exec tsc --noEmit",
+    "check": "node ./scripts/check.mjs",
     "docs:generate-reference": "node ./scripts/generate-reference.mjs",
-    "predev": "pnpm docs:generate-reference",
-    "prebuild": "pnpm docs:generate-reference"
+    "docs:verify-reference": "node ./scripts/generate-reference.mjs --check"
   },
   "dependencies": {
     "fumadocs-core": "^14.6.7",

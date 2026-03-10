@@ -3,4 +3,24 @@ title: Codex Setup
 description: Configure FL MCP for Codex workflows.
 ---
 
-Use repository-local configuration and validate schema references to avoid drift.
+## Prerequisites
+
+- Local FL MCP runtime is installed and reachable.
+- Codex session has access to repository-local MCP configuration.
+
+## Configuration
+
+1. Configure Codex to use the project-local FL MCP server entry.
+2. Verify provider/auth values are available in the session environment.
+3. Confirm reference generation is up to date before workflows.
+
+## Verification
+
+- Codex discovers FL MCP capabilities in-session.
+- Representative tool calls execute without schema mismatch errors.
+
+## Related Docs
+
+- [Client Setup](/docs/clients)
+- [API & Schema Reference](/docs/reference/api-schema)
+- [Troubleshooting](/docs/troubleshooting)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 
+from fl_mcp import __version__
 from fl_mcp.config import RuntimeConfig
 
 
@@ -12,7 +13,7 @@ from fl_mcp.config import RuntimeConfig
 class RuntimeHealth:
     status: str = "ok"
     service: str = "fl-mcp"
-    version: str = "0.1.0"
+    version: str = __version__
     environment: str = "dev"
     timestamp: str = ""
 

@@ -3,4 +3,24 @@ title: Gemini CLI Setup
 description: Configure FL MCP for Gemini CLI.
 ---
 
-Ensure the CLI can resolve transport endpoints and credentials from your runtime profile.
+## Prerequisites
+
+- Local FL MCP runtime is installed and reachable.
+- Gemini CLI profile can load MCP transport/auth settings.
+
+## Configuration
+
+1. Register FL MCP endpoint details in the active Gemini CLI profile.
+2. Confirm credentials resolve from expected environment sources.
+3. Reload profile/session before validating tool calls.
+
+## Verification
+
+- Gemini CLI can discover FL MCP surface without transport errors.
+- Representative commands execute with expected responses.
+
+## Related Docs
+
+- [Client Setup](/docs/clients)
+- [Providers](/docs/providers)
+- [Troubleshooting](/docs/troubleshooting)

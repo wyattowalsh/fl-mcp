@@ -3,6 +3,31 @@ title: Installation
 description: Installation and local environment setup.
 ---
 
-- Use `pnpm` for JavaScript tooling.
-- Align Node version with project runtime expectations.
-- Run smoke tests before enabling remote providers.
+## Purpose
+
+Prepare a reproducible local environment for FL MCP development and docs validation.
+
+## Prerequisites
+
+- Access to the repository workspace.
+- Supported Node version with `pnpm`.
+- Supported Python environment with project dependencies.
+
+## Steps
+
+1. Install JavaScript dependencies with `pnpm install`.
+2. Install Python dependencies for runtime and tests.
+3. Generate documentation references with `pnpm docs:generate-reference`.
+4. Start docs locally with `pnpm dev` when needed.
+
+## Verification
+
+- `pnpm lint` succeeds.
+- `pnpm check` succeeds.
+- `pnpm build` succeeds for the docs app.
+
+## Related Docs
+
+- [Getting Started](/docs/getting-started)
+- [Contributing](/docs/contributing)
+- [Troubleshooting](/docs/troubleshooting)

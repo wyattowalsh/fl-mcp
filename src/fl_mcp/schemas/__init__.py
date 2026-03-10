@@ -1,6 +1,6 @@
 """Canonical schema surface for FL MCP."""
 
-from .provider import ProviderManifest
+from .provider import ProviderManifest, ProviderMaturity, ProviderRuntimeStatus
 from .snapshot import Snapshot
 from .transaction import (
     DomainChange,
@@ -12,6 +12,8 @@ from .transaction import (
 __all__ = [
     "DomainChange",
     "ProviderManifest",
+    "ProviderMaturity",
+    "ProviderRuntimeStatus",
     "RollbackClass",
     "Snapshot",
     "TransactionEnvelope",

@@ -2,9 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Protocol, TypedDict
+from enum import StrEnum
+from typing import Literal, Protocol, TypedDict
 
 from fl_mcp.schemas import RollbackClass, TransactionEnvelope
+
+
+class ExecutionErrorCode(StrEnum):
+    """Canonical error codes for apply-stage execution failures."""
+
+    UNSUPPORTED_DOMAIN = "unsupported_domain"
+    DOMAIN_UNSUPPORTED = "unsupported_domain"
+    BRIDGE_PROCESS_ERROR = "bridge_process_error"
+    LIVE_BRIDGE_UNAVAILABLE = "bridge_process_error"
+    BRIDGE_NONZERO_EXIT = "bridge_nonzero_exit"
+    MOCK_FORCED_FAILURE = "mock_forced_failure"
+    ADAPTER_FAILURE = "mock_forced_failure"
+    INVALID_RESPONSE = "invalid_response"
+    EXECUTION_FAILED = "execution_failed"
+    UNKNOWN = "unknown"
 
 
 class PlannerMutationIntent(TypedDict):
@@ -33,6 +49,23 @@ class MutationResult(TypedDict):
     mutation_id: str
     success: bool
     rollback_class: RollbackClass
+    status: str
+    message: str
+    error_code: ExecutionErrorCode | None
+    checkpoint_required: bool
+
+
+class DomainExecutionReport(TypedDict):
+    """Execution report returned by the apply stage."""
+
+    domain: str
+    operation: str
+    success: bool
+    rollback_class: RollbackClass
+    status: Literal["previewed", "applied", "failed"]
+    message: str
+    error_code: ExecutionErrorCode | None
+    execution_id: str | None
 
 
 class PlannerModelInterface(Protocol):

@@ -11,6 +11,11 @@ let package = Package(
         .executableTarget(
             name: "FLMCPHelper",
             path: "Sources/FLMCPHelper"
-        )
+        ),
+        .testTarget(
+            name: "FLMCPHelperTests",
+            dependencies: ["FLMCPHelper"],
+            path: "Tests/FLMCPHelperTests"
+        ),
     ]
 )

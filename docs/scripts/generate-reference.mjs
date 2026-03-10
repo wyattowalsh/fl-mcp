@@ -1,16 +1,22 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const docsRoot = process.cwd();
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const docsRoot = path.resolve(scriptDir, '..');
 const repoRoot = path.resolve(docsRoot, '..');
 const generatedDir = path.join(docsRoot, 'content', 'docs', 'reference', 'generated');
+const schemaDir = path.join(repoRoot, 'docs', 'generated', 'schemas');
+const sourceModulesDir = path.join(repoRoot, 'src', 'fl_mcp');
+const verifyOnly = process.argv.includes('--check');
 
 async function walk(dir, predicate, acc = []) {
   let entries = [];
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
-  } catch {
-    return acc;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read directory ${dir}: ${reason}`);
   }
 
   for (const entry of entries) {
@@ -28,7 +34,7 @@ async function walk(dir, predicate, acc = []) {
   return acc;
 }
 
-async function writeMdx(fileName, title, description, lines, emptyState) {
+function buildMdxContent(title, description, lines, emptyState) {
   const header = [
     '---',
     `title: ${title}`,
@@ -40,18 +46,38 @@ async function writeMdx(fileName, title, description, lines, emptyState) {
   ];
 
   const body = lines.length ? lines.join('\n') : emptyState;
-  await fs.writeFile(
-    path.join(generatedDir, fileName),
-    `${header.join('\n')}${body}\n`,
-    'utf8',
-  );
+  return `${header.join('\n')}${body}\n`;
+}
+
+async function writeMdx(fileName, title, description, lines, emptyState) {
+  const content = buildMdxContent(title, description, lines, emptyState);
+  const outputPath = path.join(generatedDir, fileName);
+
+  if (!verifyOnly) {
+    await fs.writeFile(outputPath, content, 'utf8');
+    return;
+  }
+
+  let existing = '';
+  try {
+    existing = await fs.readFile(outputPath, 'utf8');
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`Generated file missing: ${path.relative(repoRoot, outputPath)}`);
+    }
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed reading ${path.relative(repoRoot, outputPath)}: ${reason}`);
+  }
+
+  if (existing !== content) {
+    throw new Error(
+      `Generated file out of date: ${path.relative(repoRoot, outputPath)}. Run \`pnpm --dir docs docs:generate-reference\`.`,
+    );
+  }
 }
 
 async function generateSchemaInventory() {
-  const schemaFiles = await walk(
-    path.join(repoRoot, 'docs', 'generated', 'schemas'),
-    (filePath) => filePath.endsWith('.json'),
-  );
+  const schemaFiles = await walk(schemaDir, (filePath) => filePath.endsWith('.json'));
 
   const lines = schemaFiles
     .sort()
@@ -67,10 +93,7 @@ async function generateSchemaInventory() {
 }
 
 async function generateApiInventory() {
-  const pythonFiles = await walk(
-    path.join(repoRoot, 'src', 'fl_mcp'),
-    (filePath) => filePath.endsWith('.py'),
-  );
+  const pythonFiles = await walk(sourceModulesDir, (filePath) => filePath.endsWith('.py'));
 
   const lines = pythonFiles
     .sort()
@@ -87,4 +110,8 @@ async function generateApiInventory() {
 
 await fs.mkdir(generatedDir, { recursive: true });
 await Promise.all([generateSchemaInventory(), generateApiInventory()]);
-console.log('Generated schema and API inventory docs.');
+console.log(
+  verifyOnly
+    ? 'Verified generated schema and API inventory docs.'
+    : 'Generated schema and API inventory docs.',
+);

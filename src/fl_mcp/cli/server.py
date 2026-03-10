@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
+from fl_mcp import __version__
 from fl_mcp.config import RuntimeConfig, StreamableHTTPConfig
 from fl_mcp.logging import configure_logging
 from fl_mcp.server.http import run_streamable_http
@@ -27,7 +28,7 @@ def build_parser(
     run_parser.add_argument("--environment", default="dev", help="Runtime environment name")
     run_parser.add_argument("--service-name", default="fl-mcp", help="Service name for telemetry")
     run_parser.add_argument(
-        "--service-version", default="0.1.0", help="Service version for telemetry"
+        "--service-version", default=__version__, help="Service version for telemetry"
     )
     run_parser.add_argument("--log-level", default="INFO", help="Root log level")
     run_parser.add_argument(

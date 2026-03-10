@@ -12,13 +12,15 @@ export default async function Page(props: {
   const Mdx = page.data.body;
 
   return (
-    <DocsPage toc={page.data.toc} full={false}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
-      <DocsBody>
-        <Mdx />
-      </DocsBody>
-    </DocsPage>
+    <div id="main-content" tabIndex={-1}>
+      <DocsPage toc={page.data.toc} full={false}>
+        <DocsTitle>{page.data.title}</DocsTitle>
+        <DocsDescription>{page.data.description}</DocsDescription>
+        <DocsBody>
+          <Mdx />
+        </DocsBody>
+      </DocsPage>
+    </div>
   );
 }
 

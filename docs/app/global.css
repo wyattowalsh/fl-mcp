@@ -11,6 +11,22 @@ body {
   font-family: Inter, system-ui, sans-serif;
 }
 
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0.5rem;
+  z-index: 1000;
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: 0.5rem;
+}
+
 .landing {
   max-width: 960px;
   margin: 0 auto;
@@ -32,10 +48,10 @@ body {
 }
 
 .card {
-  border: 1px solid color-mix(in oklab, var(--fd-primary), white 75%);
+  border: 1px solid hsl(var(--fd-border) / 1);
   border-radius: 12px;
   padding: 1rem;
   text-decoration: none;
-  color: inherit;
-  background: white;
+  color: hsl(var(--fd-card-foreground) / 1);
+  background: hsl(var(--fd-card) / 1);
 }

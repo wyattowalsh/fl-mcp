@@ -3,4 +3,31 @@ title: Contributing
 description: Contribution process and quality expectations.
 ---
 
-Include coding standards, review requirements, and docs contribution workflow.
+## Purpose
+
+Define the baseline workflow for safe, reviewable contributions to FL MCP docs.
+
+## Prerequisites
+
+- Repository clone with dependencies installed.
+- Familiarity with project guardrails and architecture references.
+- Ability to run docs quality checks locally.
+
+## Steps
+
+1. Scope changes to owned files and avoid unrelated modifications.
+2. Update documentation content and references in the same change set.
+3. Run `pnpm lint`, `pnpm check`, and `pnpm build` in `docs/`.
+4. Include clear file-level notes for reviewers.
+
+## Verification
+
+- Required docs checks pass locally.
+- Internal links resolve and headings remain consistent.
+- Generated references are current with no drift.
+
+## Related Docs
+
+- [Architecture](/docs/architecture)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Release Notes](/docs/release-notes)

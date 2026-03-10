@@ -16,6 +16,10 @@ class HealthState(StrEnum):
     ERROR = "error"
 
 
+HELPER_STATUS_ENDPOINT = "/v1/helper/status"
+HELPER_DIAGNOSTICS_ENDPOINT = "/v1/helper/diagnostics"
+
+
 @dataclass(slots=True)
 class DiagnosticCheck:
     """Single diagnostic check result."""
@@ -32,8 +36,10 @@ class HelperStatusPayload:
     service: str = "fl-mcp"
     health: HealthState = HealthState.OK
     timestamp: str = field(default_factory=lambda: datetime.now(tz=UTC).isoformat())
+    endpoint: str = HELPER_STATUS_ENDPOINT
     checks: list[DiagnosticCheck] = field(default_factory=list)
     logs: list[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert payload to a JSON-serializable dictionary."""
@@ -42,7 +48,3 @@ class HelperStatusPayload:
         data["health"] = self.health.value
         data["checks"] = [{**asdict(check), "state": check.state.value} for check in self.checks]
         return data
-
-
-HELPER_STATUS_ENDPOINT = "/v1/helper/status"
-HELPER_DIAGNOSTICS_ENDPOINT = "/v1/helper/diagnostics"

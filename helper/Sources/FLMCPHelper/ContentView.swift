@@ -10,17 +10,24 @@ struct ContentView: View {
                     .font(.title)
                 Text("Status: \(viewModel.statusText)")
                     .foregroundStyle(.secondary)
+                if let errorText = viewModel.lastErrorText {
+                    Text("Error: \(errorText)")
+                        .foregroundStyle(.red)
+                        .font(.footnote)
+                }
 
                 HStack {
-                    Button("Install") {
-                        viewModel.runInstallPlaceholder()
+                    Button("Check Status") {
+                        viewModel.fetchStatus()
                     }
                     .keyboardShortcut("i", modifiers: [.command])
+                    .disabled(viewModel.isRunning)
 
                     Button("Run Diagnostics") {
-                        viewModel.runDiagnosticsPlaceholder()
+                        viewModel.runDiagnostics()
                     }
                     .keyboardShortcut("d", modifiers: [.command])
+                    .disabled(viewModel.isRunning)
                 }
 
                 Spacer()

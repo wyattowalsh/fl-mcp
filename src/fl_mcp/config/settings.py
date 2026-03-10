@@ -21,7 +21,12 @@ class Settings(BaseSettings):
         Port bound by streamable HTTP transport.
     """
 
-    model_config = SettingsConfigDict(env_prefix="FL_MCP_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="FL_MCP_",
+        env_file=".env",
+        extra="ignore",
+        env_ignore_empty=True,
+    )
 
     app_name: str = "fl-mcp"
     log_level: str = "INFO"

@@ -37,7 +37,10 @@ def build_parser(
 
 
 def handle_diagnostics_shell(args: argparse.Namespace) -> int:
+    endpoint = HELPER_STATUS_ENDPOINT if args.endpoint == "status" else HELPER_DIAGNOSTICS_ENDPOINT
+
     payload = HelperStatusPayload(
+        endpoint=endpoint,
         checks=[
             DiagnosticCheck(
                 name="cli",
@@ -45,11 +48,8 @@ def handle_diagnostics_shell(args: argparse.Namespace) -> int:
                 details="CLI diagnostics endpoint operational",
             )
         ],
-        logs=["diagnostics.shell invoked"],
+        logs=[f"diagnostics.shell invoked for endpoint={args.endpoint}"],
     ).to_dict()
 
-    payload["endpoint"] = (
-        HELPER_STATUS_ENDPOINT if args.endpoint == "status" else HELPER_DIAGNOSTICS_ENDPOINT
-    )
     print(json.dumps(payload, indent=2))
     return 0

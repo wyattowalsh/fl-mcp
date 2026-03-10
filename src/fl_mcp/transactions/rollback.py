@@ -48,3 +48,13 @@ ROLLBACK_POLICY_BY_CLASSIFICATION: dict[RollbackClass, RollbackPolicyMetadata] =
 def rollback_policy_for(classification: RollbackClass) -> RollbackPolicyMetadata:
     """Resolve rollback policy metadata for a classification."""
     return ROLLBACK_POLICY_BY_CLASSIFICATION[classification]
+
+
+def classify_execution_failure(classification: RollbackClass) -> str:
+    """Map rollback class to deterministic failure status label."""
+    policy = rollback_policy_for(classification)
+    if policy.supports_automatic_rollback:
+        return "failed_rolled_back"
+    if policy.requires_checkpoint:
+        return "failed_checkpoint_required"
+    return "failed_manual_intervention"

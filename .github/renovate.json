@@ -3,24 +3,46 @@
   "extends": [
     "config:recommended",
     ":semanticCommits",
-    ":timezone(UTC)",
-    "group:allNonMajor"
+    ":timezone(America/New_York)",
+    "helpers:pinGitHubActionDigests"
   ],
   "labels": ["dependencies"],
-  "prConcurrentLimit": 10,
+  "prConcurrentLimit": 6,
+  "prHourlyLimit": 2,
   "rangeStrategy": "bump",
+  "schedule": ["after 2am and before 7am every weekday"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on monday"],
+    "commitMessageAction": "lock file maintenance"
+  },
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
-      "groupName": "github-actions"
+      "groupName": "github-actions",
+      "pinDigests": true,
+      "labels": ["dependencies", "ci"]
     },
     {
-      "matchManagers": ["pip_requirements", "poetry"],
-      "groupName": "python-dependencies"
+      "matchManagers": ["pep621"],
+      "matchFileNames": ["pyproject.toml", "providers/**/pyproject.toml", "uv.lock"],
+      "groupName": "python-dependencies",
+      "labels": ["dependencies", "python"]
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json", "docs/package.json", "pnpm-lock.yaml"],
+      "groupName": "node-dependencies",
+      "labels": ["dependencies", "javascript"]
+    },
+    {
+      "matchManagers": ["pre-commit"],
+      "groupName": "pre-commit-hooks",
+      "labels": ["dependencies", "python", "tooling"]
     }
   ],
   "vulnerabilityAlerts": {
     "enabled": true,
-    "labels": ["security"]
+    "labels": ["security", "dependencies"]
   }
 }

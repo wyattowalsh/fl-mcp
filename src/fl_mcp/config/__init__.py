@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from fl_mcp import __version__
+
 from .settings import settings
 
 
@@ -22,7 +24,7 @@ class RuntimeConfig:
 
     environment: str = "dev"
     service_name: str = "fl-mcp"
-    service_version: str = "0.1.0"
+    service_version: str = __version__
 
 
 @dataclass(slots=True, frozen=True)

@@ -15,12 +15,22 @@ const cards = [
     title: 'Client Setup',
     href: '/docs/clients',
     description: 'Configure Claude Code, Codex, Gemini CLI, and Copilot.'
+  },
+  {
+    title: 'Providers',
+    href: '/docs/providers',
+    description: 'Provider setup models, caveats, and support boundaries.'
+  },
+  {
+    title: 'ADR Index',
+    href: '/docs/adr',
+    description: 'Architecture decisions and historical rationale.'
   }
 ];
 
 export default function LandingPage() {
   return (
-    <main className="landing">
+    <main id="main-content" className="landing" tabIndex={-1}>
       <section>
         <p className="eyebrow">FL Studio MCP</p>
         <h1>Docs Hub</h1>
