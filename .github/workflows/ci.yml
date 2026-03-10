@@ -29,7 +29,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
       - name: Verify required test suite directory
         run: test -d tests/${{ matrix.suite }}
         shell: bash
@@ -67,6 +67,6 @@ jobs:
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
       - name: Quality script
         run: ./scripts/quality.sh

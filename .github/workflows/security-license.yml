@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
       - name: Run vulnerability audit
         run: uv run --with pip-audit==2.10.0 pip-audit
 
@@ -41,7 +41,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev
+        run: uv sync --all-extras --dev --frozen
       - name: Export machine-readable license report
         run: uv run --with pip-licenses==5.5.1 pip-licenses --format=json --output-file THIRD_PARTY_LICENSES.json
       - name: Enforce license denylist

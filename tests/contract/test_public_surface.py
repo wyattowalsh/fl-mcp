@@ -7,27 +7,35 @@ import pytest
 import fl_mcp.server.factory as factory_module
 from fl_mcp.config import RuntimeConfig
 from fl_mcp.config.settings import settings
+from fl_mcp.prompts.registry import prompt_names
 
 
 def test_public_tool_surface_is_sparse(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "auth_token", None)
     server = factory_module.create_server(RuntimeConfig())
 
-    async def inspect() -> tuple[set[str], set[str]]:
-        if hasattr(server, "list_tools") and hasattr(server, "list_resources"):
+    async def inspect() -> tuple[set[str], set[str], set[str]]:
+        if (
+            hasattr(server, "list_tools")
+            and hasattr(server, "list_resources")
+            and hasattr(server, "list_prompts")
+        ):
             tools = await server.list_tools()
             resources = await server.list_resources()
+            prompts = await server.list_prompts()
             return (
                 {tool.name for tool in tools},
                 {str(resource.uri) for resource in resources},
+                {prompt.name for prompt in prompts},
             )
 
         return (
             set(server.tools.keys()),
             set(server.resources.keys()),
+            set(server.prompts.keys()),
         )
 
-    tool_names, resource_uris = asyncio.run(inspect())
+    tool_names, resource_uris, registered_prompts = asyncio.run(inspect())
 
     assert tool_names == {
         "runtime_health",
@@ -40,6 +48,7 @@ def test_public_tool_surface_is_sparse(monkeypatch: pytest.MonkeyPatch) -> None:
         "manage_providers",
     }
     assert resource_uris == {"runtime://health"}
+    assert registered_prompts == set(prompt_names())
 
 
 def test_runtime_health_resource_payload_is_json_text(
@@ -58,3 +67,37 @@ def test_runtime_health_resource_payload_is_json_text(
     payload = json.loads(asyncio.run(read_health_resource()))
     assert payload["service"] == "fl-mcp"
     assert payload["status"] in {"ok", "warning", "error"}
+
+
+def test_inspect_runtime_reports_registered_surface(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(settings, "auth_token", None)
+    server = factory_module.create_server(RuntimeConfig())
+
+    async def read_runtime() -> dict[str, object]:
+        if hasattr(server, "call_tool"):
+            result = await server.call_tool("inspect_runtime", {})
+            return cast(dict[str, object], result.structured_content)
+        inspect = server.tools["inspect_runtime"]
+        return cast(dict[str, object], inspect())
+
+    payload = asyncio.run(read_runtime())
+    capabilities = cast(dict[str, int], payload["capabilities"])
+    tools = cast(list[dict[str, object]], payload["tools"])
+    prompts = cast(list[dict[str, object]], payload["prompts"])
+
+    assert payload["status"] == "ok"
+    assert payload["tool"] == "inspect_runtime"
+    assert capabilities["prompt_count"] == len(prompt_names())
+    assert {cast(str, entry["name"]) for entry in tools} == {
+        "runtime_health",
+        "query_project",
+        "plan_changes",
+        "apply_changes",
+        "render_project",
+        "analyze_audio",
+        "inspect_runtime",
+        "manage_providers",
+    }
+    assert [cast(str, entry["name"]) for entry in prompts] == list(prompt_names())

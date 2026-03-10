@@ -34,6 +34,34 @@ class ProviderStatus:
         }
 
 
+@dataclass(slots=True)
+class ProviderDiscoveryError:
+    """Structured discovery error for provider entry-point loading."""
+
+    group: str
+    entry_point: str
+    value: str
+    error_type: str
+    message: str
+
+    def model_dump(self) -> dict[str, str]:
+        return {
+            "group": self.group,
+            "entry_point": self.entry_point,
+            "value": self.value,
+            "error_type": self.error_type,
+            "message": self.message,
+        }
+
+
+@dataclass(slots=True)
+class ProviderDiscoveryResult:
+    """Aggregated provider discovery outcome."""
+
+    loaded: list[ProviderManifest]
+    errors: list[ProviderDiscoveryError]
+
+
 def _entry_points_for_group(group: str) -> list[metadata.EntryPoint]:
     entry_points = metadata.entry_points()
     if hasattr(entry_points, "select"):
@@ -51,6 +79,7 @@ class ProviderRegistry:
         self._providers: dict[str, Provider] = {}
         self._status: dict[str, ProviderStatus] = {}
         self._entry_points_loaded: bool = False
+        self._entry_point_errors: list[ProviderDiscoveryError] = []
 
     def register(self, provider: Provider, *, source: str = "direct") -> ProviderManifest:
         manifest = ProviderManifest.model_validate(provider.manifest)
@@ -93,15 +122,34 @@ class ProviderRegistry:
         provider = cast(Provider, candidate)
         return self.register(provider, source=f"module:{module_path}")
 
-    def load_from_entry_points(self, group: str = "fl_mcp.providers") -> list[ProviderManifest]:
+    def load_from_entry_points(
+        self,
+        group: str = "fl_mcp.providers",
+    ) -> ProviderDiscoveryResult:
         if self._entry_points_loaded:
-            return self.manifests()
+            return ProviderDiscoveryResult(
+                loaded=self.manifests(),
+                errors=list(self._entry_point_errors),
+            )
         loaded: list[ProviderManifest] = []
+        errors: list[ProviderDiscoveryError] = []
         for entry_point in _entry_points_for_group(group):
-            provider = cast(Provider, entry_point.load())
-            loaded.append(self.register(provider, source=f"entry-point:{entry_point.name}"))
+            try:
+                provider = cast(Provider, entry_point.load())
+                loaded.append(self.register(provider, source=f"entry-point:{entry_point.name}"))
+            except Exception as exc:  # pragma: no cover - covered through behavior contract
+                errors.append(
+                    ProviderDiscoveryError(
+                        group=group,
+                        entry_point=entry_point.name,
+                        value=entry_point.value,
+                        error_type=type(exc).__name__,
+                        message=str(exc),
+                    )
+                )
+        self._entry_point_errors = errors
         self._entry_points_loaded = True
-        return loaded
+        return ProviderDiscoveryResult(loaded=loaded, errors=errors)
 
 
 _GLOBAL_REGISTRY: ProviderRegistry | None = None

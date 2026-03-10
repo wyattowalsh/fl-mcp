@@ -16,6 +16,8 @@ class ExecutionErrorCode(StrEnum):
     BRIDGE_PROCESS_ERROR = "bridge_process_error"
     LIVE_BRIDGE_UNAVAILABLE = "bridge_process_error"
     BRIDGE_NONZERO_EXIT = "bridge_nonzero_exit"
+    BRIDGE_TIMEOUT = "bridge_timeout"
+    LIVE_BRIDGE_TIMEOUT = "bridge_timeout"
     MOCK_FORCED_FAILURE = "mock_forced_failure"
     ADAPTER_FAILURE = "mock_forced_failure"
     INVALID_RESPONSE = "invalid_response"

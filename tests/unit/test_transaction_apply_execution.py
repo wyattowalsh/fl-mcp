@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from fl_mcp.schemas import TransactionEnvelope
+import subprocess
+
+import pytest
+
+from fl_mcp.bridge.fl_studio import (
+    DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS,
+    FLStudioBridge,
+)
+from fl_mcp.schemas import DomainChange, TransactionEnvelope
 from fl_mcp.transactions.apply import apply_changes
 
 
@@ -110,6 +118,12 @@ def test_apply_changes_all_or_nothing_fails_when_any_change_fails() -> None:
 
     result = apply_changes(envelope)
     assert result.status == "failed"
+    assert result.checkpoint_id is None
+    assert result.diff_summary["applied_count"] == 0
+    assert "applied" not in set(result.per_domain_results.values())
+    reports = result.diff_summary["reports"]
+    assert isinstance(reports, list)
+    assert all(report["success"] is False for report in reports)
     assert result.errors
 
 
@@ -136,3 +150,105 @@ def test_apply_changes_reports_unsupported_domain_with_error_taxonomy() -> None:
     assert isinstance(reports, list)
     assert reports[0]["error_code"] == "unsupported_domain"
     assert result.per_domain_results["unknown-domain"] == "failed_checkpoint_required"
+
+
+def test_live_bridge_timeout_uses_env_override_and_maps_error_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_timeout: dict[str, float] = {}
+
+    def _timeout_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        captured_timeout["value"] = kwargs["timeout"]
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setenv("FL_MCP_BRIDGE_MODE", "live")
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_CMD", "bridge-runner")
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS", "0.25")
+    monkeypatch.setattr(subprocess, "run", _timeout_run)
+
+    bridge = FLStudioBridge.from_environment()
+    result = bridge.execute_change(
+        DomainChange(
+            domain="mixer",
+            operation="set_volume",
+            rollback_class="checkpointed",
+            payload={},
+        )
+    )
+
+    assert captured_timeout["value"] == 0.25
+    assert result.success is False
+    assert result.error_code == "bridge_timeout"
+
+
+def test_live_bridge_timeout_invalid_env_uses_safe_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured_timeout: dict[str, float] = {}
+
+    def _success_run(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        captured_timeout["value"] = kwargs["timeout"]
+        return subprocess.CompletedProcess(
+            args=args[0],
+            returncode=0,
+            stdout='{"success": true}',
+            stderr="",
+        )
+
+    monkeypatch.setenv("FL_MCP_BRIDGE_MODE", "live")
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_CMD", "bridge-runner")
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS", "invalid")
+    monkeypatch.setattr(subprocess, "run", _success_run)
+
+    bridge = FLStudioBridge.from_environment()
+    result = bridge.execute_change(
+        DomainChange(
+            domain="mixer",
+            operation="set_volume",
+            rollback_class="checkpointed",
+            payload={},
+        )
+    )
+
+    assert captured_timeout["value"] == DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS
+    assert result.success is True
+
+
+@pytest.mark.parametrize(
+    "stdout",
+    [
+        "",
+        "{}",
+        "[]",
+        "not-json",
+        '{"success": "true"}',
+    ],
+)
+def test_live_bridge_response_parsing_fails_closed_without_explicit_success_true(
+    monkeypatch: pytest.MonkeyPatch,
+    stdout: str,
+) -> None:
+    def _run_with_output(*args, **kwargs) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args=args[0],
+            returncode=0,
+            stdout=stdout,
+            stderr="",
+        )
+
+    monkeypatch.setenv("FL_MCP_BRIDGE_MODE", "live")
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_CMD", "bridge-runner")
+    monkeypatch.setattr(subprocess, "run", _run_with_output)
+
+    bridge = FLStudioBridge.from_environment()
+    result = bridge.execute_change(
+        DomainChange(
+            domain="mixer",
+            operation="set_volume",
+            rollback_class="checkpointed",
+            payload={},
+        )
+    )
+
+    assert result.success is False
+    assert result.error_code == "invalid_response"

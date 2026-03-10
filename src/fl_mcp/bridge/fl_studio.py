@@ -14,6 +14,8 @@ from fl_mcp.graph.domains import DOMAINS
 from fl_mcp.schemas import DomainChange, RollbackClass
 
 BridgeMode = Literal["mock", "live"]
+DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS = 5.0
+LIVE_BRIDGE_TIMEOUT_ENV = "FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS"
 
 
 @dataclass(slots=True, frozen=True)
@@ -30,16 +32,27 @@ class BridgeExecutionResult:
 class FLStudioBridge:
     """Executes domain operations against a live bridge command or deterministic mock."""
 
-    def __init__(self, *, mode: BridgeMode = "mock", live_command: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        mode: BridgeMode = "mock",
+        live_command: str | None = None,
+        live_timeout_seconds: float = DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS,
+    ) -> None:
         self.mode = mode
         self.live_command = live_command
+        self.live_timeout_seconds = live_timeout_seconds
 
     @classmethod
     def from_environment(cls) -> FLStudioBridge:
         configured_mode = os.getenv("FL_MCP_BRIDGE_MODE", "mock").strip().lower()
         mode: BridgeMode = "live" if configured_mode == "live" else "mock"
         command = os.getenv("FL_MCP_FL_STUDIO_BRIDGE_CMD")
-        return cls(mode=mode, live_command=command)
+        return cls(
+            mode=mode,
+            live_command=command,
+            live_timeout_seconds=_live_bridge_timeout_seconds_from_environment(),
+        )
 
     def execute_change(self, change: DomainChange) -> BridgeExecutionResult:
         if change.domain not in DOMAINS:
@@ -83,6 +96,20 @@ class FLStudioBridge:
                 capture_output=True,
                 check=False,
                 text=True,
+                timeout=self.live_timeout_seconds,
+            )
+        except subprocess.TimeoutExpired:
+            return BridgeExecutionResult(
+                domain=change.domain,
+                operation=change.operation,
+                success=False,
+                message=(
+                    "Live bridge command timed out after "
+                    f"{self.live_timeout_seconds:g} seconds."
+                ),
+                error_code="bridge_timeout",
+                execution_id=None,
+                bridge_mode="live",
             )
         except OSError as exc:
             return BridgeExecutionResult(
@@ -109,27 +136,50 @@ class FLStudioBridge:
                 bridge_mode="live",
             )
 
-        try:
-            decoded = json.loads(completed.stdout.strip() or "{}")
-        except json.JSONDecodeError:
-            decoded = {}
+        decoded, decode_error = _decode_live_bridge_response(completed.stdout)
+        if decode_error is not None or decoded is None:
+            return BridgeExecutionResult(
+                domain=change.domain,
+                operation=change.operation,
+                success=False,
+                message=decode_error or "Live bridge returned an invalid response payload.",
+                error_code="invalid_response",
+                execution_id=None,
+                bridge_mode="live",
+            )
 
-        if not isinstance(decoded, dict):
-            decoded = {}
+        success_field = decoded.get("success")
+        execution_id = _normalize_execution_id(decoded.get("execution_id"))
 
-        success = bool(decoded.get("success", True))
-        message = str(decoded.get("message", "Live bridge executed"))
-        execution_id = decoded.get("execution_id")
-        if execution_id is not None and not isinstance(execution_id, str):
-            execution_id = None
+        if success_field is True:
+            return BridgeExecutionResult(
+                domain=change.domain,
+                operation=change.operation,
+                success=True,
+                message=str(decoded.get("message", "Live bridge executed")),
+                error_code=None,
+                execution_id=execution_id,
+                bridge_mode="live",
+            )
+
+        if success_field is False:
+            return BridgeExecutionResult(
+                domain=change.domain,
+                operation=change.operation,
+                success=False,
+                message=str(decoded.get("message", "Live bridge execution failed.")),
+                error_code=str(decoded.get("error_code") or "execution_failed"),
+                execution_id=execution_id,
+                bridge_mode="live",
+            )
 
         return BridgeExecutionResult(
             domain=change.domain,
             operation=change.operation,
-            success=success,
-            message=message,
-            error_code=None if success else str(decoded.get("error_code") or "unknown"),
-            execution_id=execution_id,
+            success=False,
+            message="Live bridge response must include explicit success=true.",
+            error_code="invalid_response",
+            execution_id=None,
             bridge_mode="live",
         )
 
@@ -161,6 +211,42 @@ def _stable_execution_id(domain: str, operation: str, payload: dict[str, object]
     stable_payload = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     digest = hashlib.sha256(f"{domain}:{operation}:{stable_payload}".encode()).hexdigest()
     return f"mock-{digest[:16]}"
+
+
+def _normalize_execution_id(value: object) -> str | None:
+    return value if isinstance(value, str) else None
+
+
+def _live_bridge_timeout_seconds_from_environment() -> float:
+    raw_timeout = os.getenv(LIVE_BRIDGE_TIMEOUT_ENV)
+    if raw_timeout is None:
+        return DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS
+
+    try:
+        timeout_seconds = float(raw_timeout.strip())
+    except ValueError:
+        return DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS
+
+    if timeout_seconds <= 0:
+        return DEFAULT_LIVE_BRIDGE_TIMEOUT_SECONDS
+
+    return timeout_seconds
+
+
+def _decode_live_bridge_response(output: str) -> tuple[dict[str, object] | None, str | None]:
+    payload = output.strip()
+    if not payload:
+        return None, "Live bridge returned empty output."
+
+    try:
+        decoded = json.loads(payload)
+    except json.JSONDecodeError:
+        return None, "Live bridge returned non-JSON output."
+
+    if not isinstance(decoded, dict):
+        return None, "Live bridge returned non-object JSON output."
+
+    return {str(key): value for key, value in decoded.items()}, None
 
 
 DEFAULT_BRIDGE = FLStudioBridge.from_environment()

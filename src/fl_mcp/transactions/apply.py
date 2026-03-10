@@ -58,6 +58,34 @@ def _normalize_error_code(error_code: str | ExecutionErrorCode | None) -> Execut
         return ExecutionErrorCode.UNKNOWN
 
 
+def _finalize_all_or_nothing_failure(
+    *,
+    execution_policy: Literal["all-or-nothing", "allow-partial"],
+    overall_status: Literal["applied", "failed", "partially_applied"],
+    keyed_changes: list[tuple[str, DomainChange]],
+    execution_reports: list[DomainExecutionReport],
+    per_domain_results: dict[str, str],
+) -> tuple[int, int]:
+    if execution_policy != "all-or-nothing" or overall_status != "failed":
+        failed_count = sum(1 for report in execution_reports if not report["success"])
+        applied_count = sum(1 for report in execution_reports if report["success"])
+        return applied_count, failed_count
+
+    for index, report in enumerate(execution_reports):
+        if not report["success"]:
+            continue
+
+        key, change = keyed_changes[index]
+        per_domain_results[key] = classify_execution_failure(change.rollback_class)
+        report["success"] = False
+        report["status"] = "failed"
+        report["error_code"] = ExecutionErrorCode.EXECUTION_FAILED
+        report["message"] = "Change was reverted due to all-or-nothing transaction failure."
+        report["execution_id"] = None
+
+    return 0, len(execution_reports)
+
+
 def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
     """Apply or preview a planned transaction envelope."""
 
@@ -67,23 +95,22 @@ def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
     bridge = FLStudioBridge.from_environment()
     total_by_domain: Counter[str] = Counter(change.domain for change in envelope.changes)
     seen: defaultdict[str, int] = defaultdict(int)
+    keyed_changes: list[tuple[str, DomainChange]] = []
     per_domain_results: dict[str, str] = {}
     execution_reports: list[DomainExecutionReport] = []
 
-    applied_count = 0
-    failed_count = 0
-
     for change in envelope.changes:
         key = _domain_result_key(change, total_by_domain, seen)
+        keyed_changes.append((key, change))
+
+    for key, change in keyed_changes:
         bridge_result = bridge.execute_change(change)
 
         if bridge_result.success:
             result_status = "applied"
-            applied_count += 1
             error_code = None
         else:
             result_status = classify_execution_failure(change.rollback_class)
-            failed_count += 1
             error_code = _normalize_error_code(bridge_result.error_code)
 
         per_domain_results[key] = result_status
@@ -100,12 +127,23 @@ def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
             )
         )
 
+    applied_count = sum(1 for report in execution_reports if report["success"])
+    failed_count = len(execution_reports) - applied_count
+
     if failed_count == 0:
         overall_status: Literal["applied", "failed", "partially_applied"] = "applied"
     elif applied_count and envelope.execution_policy == "allow-partial":
         overall_status = "partially_applied"
     else:
         overall_status = "failed"
+
+    applied_count, failed_count = _finalize_all_or_nothing_failure(
+        execution_policy=envelope.execution_policy,
+        overall_status=overall_status,
+        keyed_changes=keyed_changes,
+        execution_reports=execution_reports,
+        per_domain_results=per_domain_results,
+    )
 
     errors = [report["message"] for report in execution_reports if not report["success"]]
     warnings: list[str] = []
@@ -121,7 +159,11 @@ def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
     return TransactionResult(
         transaction_id=f"tx-{envelope.request_id}",
         status=overall_status,
-        checkpoint_id=f"ckpt-{envelope.request_id}" if applied_count else None,
+        checkpoint_id=(
+            f"ckpt-{envelope.request_id}"
+            if applied_count and overall_status in {"applied", "partially_applied"}
+            else None
+        ),
         snapshot_before=envelope.target_snapshot_id,
         snapshot_after=snapshot_after,
         per_domain_results=per_domain_results,
