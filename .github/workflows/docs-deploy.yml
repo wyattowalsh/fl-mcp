@@ -5,6 +5,10 @@ on:
   push:
     tags:
       - 'v*.*.*'
+      - '!v*.*.*-*'
+      - '!v*.*.*rc*'
+      - '!v*.*.*alpha*'
+      - '!v*.*.*beta*'
 
 concurrency:
   group: docs-deploy-${{ github.ref }}
