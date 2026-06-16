@@ -124,7 +124,11 @@ class TestInstallCommand:
             data["uvx_environment"]["FL_MCP_FL_STUDIO_BRIDGE_CMD"] == data["bridge"]["uvx_command"]
         )
         assert data["bridge"]["bridge_dir"] == str(default_file_bridge_dir())
-        assert data["bridge"]["bridge_dir"].endswith("Settings/Hardware/FL MCP Bridge/bridge")
+        assert (
+            data["bridge"]["bridge_dir"]
+            .replace("\\", "/")
+            .endswith("Settings/Hardware/FL MCP Bridge/bridge")
+        )
 
 
 # ---------------------------------------------------------------------------

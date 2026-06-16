@@ -12,7 +12,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 DEFAULT_TIMEOUT_SECONDS = 60
 MAX_CAPTURE_CHARS = 4000
 
@@ -156,7 +155,11 @@ def main() -> int:
     )
 
     if uv_path:
-        python_result = run_command(["uv", "run", "python", "--version"], cwd=repo_root, timeout=args.timeout)
+        python_result = run_command(
+            ["uv", "run", "python", "--version"],
+            cwd=repo_root,
+            timeout=args.timeout,
+        )
         python_version = parse_python_version(
             f"{python_result.get('stdout', '')}\n{python_result.get('stderr', '')}"
         )
@@ -177,13 +180,17 @@ def main() -> int:
         )
 
     if source == "local":
-        local_ok = (repo_root / "pyproject.toml").exists() and (repo_root / "src" / "fl_mcp").exists()
+        local_ok = (repo_root / "pyproject.toml").exists() and (
+            repo_root / "src" / "fl_mcp"
+        ).exists()
         add_check(
             checks,
             "local_checkout",
             local_ok,
             details={"repo_root": str(repo_root)},
-            missing_step="Run from the fl-mcp checkout or pass --repo-root /absolute/path/to/fl-mcp.",
+            missing_step=(
+                "Run from the fl-mcp checkout or pass --repo-root /absolute/path/to/fl-mcp."
+            ),
             missing_steps=missing_steps,
             evidence=evidence,
         )
@@ -199,7 +206,9 @@ def main() -> int:
             "fl_mcp_version",
             bool(version_result["ok"]),
             details=version_result,
-            missing_step="Make FL MCP available through uvx, or use --source local from a checkout.",
+            missing_step=(
+                "Make FL MCP available through uvx, or use --source local from a checkout."
+            ),
             missing_steps=missing_steps,
             evidence=evidence,
         )
@@ -245,7 +254,9 @@ def main() -> int:
                 "install_dry_run",
                 bool(install_result["ok"]),
                 details=install_result,
-                missing_step="Run `fl-mcp install --dry-run` and configure the reported bridge environment.",
+                missing_step=(
+                    "Run `fl-mcp install --dry-run` and configure the reported bridge environment."
+                ),
                 missing_steps=missing_steps,
                 evidence=evidence,
             )
@@ -300,7 +311,8 @@ def main() -> int:
     safe_to_attempt_live = args.mode == "live" and all(
         ok_by_name.get(name, False) for name in required_live
     )
-    status = "ok" if (safe_to_attempt_live if args.mode == "live" else safe_to_execute_mock) else "blocked"
+    setup_ready = safe_to_attempt_live if args.mode == "live" else safe_to_execute_mock
+    status = "ok" if setup_ready else "blocked"
 
     output = {
         "status": status,

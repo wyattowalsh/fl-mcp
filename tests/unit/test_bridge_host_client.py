@@ -636,13 +636,14 @@ def test_fl_controller_script_allows_default_bridge_when_host_stat_fails(
     monkeypatch.delenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", raising=False)
     monkeypatch.setattr(module, "__file__", str(tmp_path / "device_FL_MCP_Bridge.py"))
 
-    def fail_host_stat(_path: str) -> object:
+    def fail_host_stat(*_args: object, **_kwargs: object) -> object:
         raise SystemError("error return without exception set")
 
-    monkeypatch.setattr(module.os, "stat", fail_host_stat)
-    bridge_dir = module._bridge_dir()
+    with pytest.MonkeyPatch.context() as host_monkeypatch:
+        host_monkeypatch.setattr(module.os, "stat", fail_host_stat)
+        bridge_dir = module._bridge_dir()
 
-    assert module._ensure_private_bridge_dir(bridge_dir) == bridge_dir
+        assert module._ensure_private_bridge_dir(bridge_dir) == bridge_dir
 
 
 def test_fl_controller_script_keeps_env_bridge_dir_strict(
@@ -652,13 +653,14 @@ def test_fl_controller_script_keeps_env_bridge_dir_strict(
     module = _load_controller_script()
     monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", str(tmp_path / "bridge"))
 
-    def fail_host_stat(_path: str) -> object:
+    def fail_host_stat(*_args: object, **_kwargs: object) -> object:
         raise SystemError("error return without exception set")
 
-    monkeypatch.setattr(module.os, "stat", fail_host_stat)
+    with pytest.MonkeyPatch.context() as host_monkeypatch:
+        host_monkeypatch.setattr(module.os, "stat", fail_host_stat)
 
-    with pytest.raises(SystemError, match="error return"):
-        module._ensure_private_bridge_dir(module._bridge_dir())
+        with pytest.raises(SystemError, match="error return"):
+            module._ensure_private_bridge_dir(module._bridge_dir())
 
 
 def test_fl_controller_script_deduplicates_processed_request_files(

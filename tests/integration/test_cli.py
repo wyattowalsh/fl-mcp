@@ -93,8 +93,10 @@ def test_install_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     assert data["environment"]["FL_MCP_BRIDGE_MODE"] == "live"
     assert "fl_mcp.bridge.host_client" in data["environment"]["FL_MCP_FL_STUDIO_BRIDGE_CMD"]
     assert data["environment"]["FL_MCP_FL_STUDIO_BRIDGE_DIR"] == str(default_file_bridge_dir())
-    assert data["environment"]["FL_MCP_FL_STUDIO_BRIDGE_DIR"].endswith(
-        "Settings/Hardware/FL MCP Bridge/bridge"
+    assert (
+        data["environment"]["FL_MCP_FL_STUDIO_BRIDGE_DIR"]
+        .replace("\\", "/")
+        .endswith("Settings/Hardware/FL MCP Bridge/bridge")
     )
     assert (
         "fl_mcp.bridge.selected_controller_client"
