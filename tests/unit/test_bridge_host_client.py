@@ -653,8 +653,6 @@ def test_fl_controller_script_keeps_env_bridge_dir_strict(
 ) -> None:
     module = _load_controller_script()
     monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", str(tmp_path / "bridge"))
-    if os.name != "posix":
-        pytest.skip("strict bridge directory permission checks are POSIX-only")
 
     def fail_host_stat(*_args: object, **_kwargs: object) -> object:
         raise SystemError("error return without exception set")
