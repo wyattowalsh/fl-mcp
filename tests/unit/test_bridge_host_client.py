@@ -640,6 +640,7 @@ def test_fl_controller_script_allows_default_bridge_when_host_stat_fails(
         raise SystemError("error return without exception set")
 
     with pytest.MonkeyPatch.context() as host_monkeypatch:
+        host_monkeypatch.setattr(module.os, "name", "posix")
         host_monkeypatch.setattr(module.os, "stat", fail_host_stat)
         bridge_dir = module._bridge_dir()
 
@@ -652,11 +653,14 @@ def test_fl_controller_script_keeps_env_bridge_dir_strict(
 ) -> None:
     module = _load_controller_script()
     monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", str(tmp_path / "bridge"))
+    if os.name != "posix":
+        pytest.skip("strict bridge directory permission checks are POSIX-only")
 
     def fail_host_stat(*_args: object, **_kwargs: object) -> object:
         raise SystemError("error return without exception set")
 
     with pytest.MonkeyPatch.context() as host_monkeypatch:
+        host_monkeypatch.setattr(module.os, "name", "posix")
         host_monkeypatch.setattr(module.os, "stat", fail_host_stat)
 
         with pytest.raises(SystemError, match="error return"):
