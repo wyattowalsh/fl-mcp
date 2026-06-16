@@ -5,7 +5,7 @@ from fl_mcp.transactions.envelope import (
 
 
 def test_transaction_envelope_validation_and_rollback_classifications() -> None:
-    envelope = {
+    envelope: dict[str, object] = {
         "request_id": "tx-1",
         "mode": "preview",
         "changes": [{"domain": "mixer", "operation": "noop", "rollback_class": "best_effort"}],

@@ -1,0 +1,586 @@
+{
+  "$defs": {
+    "PluginControl": {
+      "description": "A semantic plugin control that may resolve to a local FL parameter index.",
+      "properties": {
+        "control_id": {
+          "minLength": 1,
+          "title": "Control Id",
+          "type": "string"
+        },
+        "control_origin": {
+          "default": "curated_semantic",
+          "enum": [
+            "live_raw",
+            "curated_semantic",
+            "vendor_seed",
+            "generated_stub",
+            "preset_asset"
+          ],
+          "title": "Control Origin",
+          "type": "string"
+        },
+        "group": {
+          "default": "main",
+          "title": "Group",
+          "type": "string"
+        },
+        "label": {
+          "minLength": 1,
+          "title": "Label",
+          "type": "string"
+        },
+        "midi_cc": {
+          "anyOf": [
+            {
+              "maximum": 127,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Midi Cc"
+        },
+        "parameter_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Index"
+        },
+        "parameter_name_hint": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Name Hint"
+        },
+        "readback": {
+          "default": true,
+          "title": "Readback",
+          "type": "boolean"
+        },
+        "requires_midi": {
+          "default": false,
+          "title": "Requires Midi",
+          "type": "boolean"
+        },
+        "requires_window": {
+          "default": false,
+          "title": "Requires Window",
+          "type": "boolean"
+        },
+        "risk": {
+          "default": "safe",
+          "enum": [
+            "read",
+            "safe",
+            "creative",
+            "destructive",
+            "volatile"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "value_map": {
+          "$ref": "#/$defs/PluginValueMap"
+        }
+      },
+      "required": [
+        "control_id",
+        "label"
+      ],
+      "title": "PluginControl",
+      "type": "object"
+    },
+    "PluginRawParameter": {
+      "description": "One FL-exposed automatable plugin parameter discovered through live probing.",
+      "properties": {
+        "control_origin": {
+          "default": "live_raw",
+          "enum": [
+            "live_raw",
+            "curated_semantic",
+            "vendor_seed",
+            "generated_stub",
+            "preset_asset"
+          ],
+          "title": "Control Origin",
+          "type": "string"
+        },
+        "normalized_value": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Normalized Value"
+        },
+        "parameter_index": {
+          "minimum": 0,
+          "title": "Parameter Index",
+          "type": "integer"
+        },
+        "parameter_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Name"
+        },
+        "readable": {
+          "default": true,
+          "title": "Readable",
+          "type": "boolean"
+        },
+        "risk": {
+          "default": "safe",
+          "enum": [
+            "read",
+            "safe",
+            "creative",
+            "destructive",
+            "volatile"
+          ],
+          "title": "Risk",
+          "type": "string"
+        },
+        "value_string": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value String"
+        },
+        "writable": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Writable"
+        },
+        "write_probe_status": {
+          "default": "not_run",
+          "enum": [
+            "not_run",
+            "skipped",
+            "read_only",
+            "writable",
+            "failed",
+            "restored"
+          ],
+          "title": "Write Probe Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "parameter_index"
+      ],
+      "title": "PluginRawParameter",
+      "type": "object"
+    },
+    "PluginValueMap": {
+      "description": "Mapping from semantic plain values to FL's normalized plugin values.",
+      "properties": {
+        "default_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default Value"
+        },
+        "enum_values": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Enum Values",
+          "type": "array"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expression"
+        },
+        "kind": {
+          "default": "normalized",
+          "enum": [
+            "normalized",
+            "linear",
+            "log_frequency",
+            "db",
+            "enum",
+            "percent",
+            "bipolar",
+            "milliseconds",
+            "tempo_synced",
+            "note_pitch",
+            "custom"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Value"
+        },
+        "min_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Value"
+        }
+      },
+      "title": "PluginValueMap",
+      "type": "object"
+    },
+    "PluginWrapperFingerprint": {
+      "description": "Local wrapper identity used to detect stale parameter mappings.",
+      "properties": {
+        "bridge_mode": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bridge Mode"
+        },
+        "fl_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fl Version"
+        },
+        "format": {
+          "default": "unknown",
+          "enum": [
+            "au",
+            "vst",
+            "vst3",
+            "clap",
+            "fst",
+            "fxp",
+            "fxb",
+            "unknown"
+          ],
+          "title": "Format",
+          "type": "string"
+        },
+        "parameter_count": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Count"
+        },
+        "parameter_name_hash": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parameter Name Hash"
+        },
+        "plugin_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Plugin Name"
+        }
+      },
+      "title": "PluginWrapperFingerprint",
+      "type": "object"
+    }
+  },
+  "description": "Declarative plugin support profile.",
+  "properties": {
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
+    "confidence": {
+      "default": 0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "coverage_evidence": {
+      "additionalProperties": true,
+      "title": "Coverage Evidence",
+      "type": "object"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "family": {
+      "minLength": 1,
+      "title": "Family",
+      "type": "string"
+    },
+    "kind": {
+      "default": "unknown",
+      "enum": [
+        "instrument",
+        "effect",
+        "instrument_or_effect",
+        "unknown"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "preset_loaders": {
+      "items": {
+        "enum": [
+          "au",
+          "vst",
+          "vst3",
+          "clap",
+          "fst",
+          "fxp",
+          "fxb",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Preset Loaders",
+      "type": "array"
+    },
+    "profile_id": {
+      "minLength": 1,
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "provenance": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Provenance",
+      "type": "array"
+    },
+    "raw_parameters": {
+      "items": {
+        "$ref": "#/$defs/PluginRawParameter"
+      },
+      "title": "Raw Parameters",
+      "type": "array"
+    },
+    "routing_requirements": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Routing Requirements",
+      "type": "array"
+    },
+    "semantic_controls": {
+      "items": {
+        "$ref": "#/$defs/PluginControl"
+      },
+      "title": "Semantic Controls",
+      "type": "array"
+    },
+    "status": {
+      "default": "stub",
+      "enum": [
+        "verified",
+        "partial",
+        "seed",
+        "stub",
+        "desired",
+        "unsupported"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "support_priority": {
+      "default": "P3_inventory_only_on_demand",
+      "enum": [
+        "P0_paid_installed",
+        "P1_paid_detected_or_suite",
+        "P2_popular_useful_stock_or_free",
+        "P3_inventory_only_on_demand",
+        "desired_not_installed"
+      ],
+      "title": "Support Priority",
+      "type": "string"
+    },
+    "support_state": {
+      "anyOf": [
+        {
+          "enum": [
+            "inventory_stub",
+            "loadable",
+            "raw_enumerated",
+            "semantic_seed",
+            "calibrated",
+            "verified",
+            "desired",
+            "not_installed",
+            "unloadable",
+            "unprobeable",
+            "unsupported_host_behavior"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Support State"
+    },
+    "supported_formats": {
+      "items": {
+        "enum": [
+          "au",
+          "vst",
+          "vst3",
+          "clap",
+          "fst",
+          "fxp",
+          "fxb",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Supported Formats",
+      "type": "array"
+    },
+    "vendor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vendor"
+    },
+    "wrapper_fingerprint": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PluginWrapperFingerprint"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "profile_id",
+    "family",
+    "display_name"
+  ],
+  "title": "PluginProfile",
+  "type": "object"
+}

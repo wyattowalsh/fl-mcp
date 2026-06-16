@@ -3,6 +3,250 @@ title: Release Notes
 description: Documentation-centric release notes.
 ---
 
+## 2026-06-15 - Plugin Profile Extensibility
+
+- Added priority-scoped plugin support tiers: P0 paid installed targets, P1
+  paid/pro suite entries, P2 popular/useful stock or free tools, and P3
+  inventory-only/on-demand rows.
+- Added internal plugin-profile operations behind the existing compact 12-tool
+  surface for plugin inventory, profile lookup, live probing, calibration,
+  raw parameter-name enumeration, raw profile generation, priority support
+  audits, semantic mapped-parameter reads/writes, local preset discovery, and
+  inventory reconciliation.
+- Kept plugin support profile-first: vendor/manual data seeds semantic controls,
+  while executable FL parameter indices require live calibration or verified
+  local overlays.
+- Added seed profiles for Sylenth1, Serum/Serum2, FabFilter Pro-Q 3, FabFilter
+  Pro-C 2, ShaperBox 2, detected FabFilter suite stubs, CamelCrusher, Drumazon,
+  ValhallaRoom, FL Studio VST/AU handling, and an iZotope Trash desired target.
+- `fl_browser`, `fl_search_capabilities`, and `fl_get_capability_schema` now
+  surface plugin profile and local inventory status without adding public MCP
+  tools. Uncalibrated mapped writes fail closed with structured errors such as
+  `calibration_required`.
+- The compact catalog now contains 216 internal operations across 16 domains;
+  visible FastMCP tools remain exactly 12.
+
+## 2026-06-13 - Forced-Live Provider Contract
+
+- Updated `flapi-live` from a narrow advertised live subset to a forced-live
+  host-file bridge route for every compact catalog operation when the runtime is
+  in live mode.
+- `provider="auto"` now resolves to `flapi-live` for every operation in live
+  mode. Explicit `provider="mock"` remains deterministic for rehearsal and CI.
+- Capability metadata reports verified bridge operations as `available` and
+  best-effort live attempts as `attemptable`; neither path may report success
+  unless the DAW bridge confirms the call.
+- Live failures are structured as `api_missing`, `unsupported_host_behavior`,
+  `path_unavailable`, `host_exception`, bridge timeout, or bridge process errors
+  instead of silently falling back to mock.
+- Regenerated the generated API inventory from the compact public MCP surface so
+  docs verification checks the visible 12-tool roster, resources, prompts,
+  providers, and 216-operation internal catalog.
+
+## 2026-06-13 - CI, Release, And Changelog Automation Hardening
+
+- Replaced stale quality-script workflow calls with direct `pre-commit`, `ty`,
+  lockfile, and vulnerability-audit gates so CI no longer depends on removed
+  root scripts.
+- Added package build and uvx installability smoke checks to CI and release
+  builds, including wheel metadata validation and `twine check` coverage.
+- Hardened docs CI and Pages deploy with nested-package reference verification,
+  lint, content checks, and build checks using
+  `pnpm --dir docs --ignore-workspace ...`.
+- Added native GitHub generated-release-note categorization through
+  `.github/release.yml` and a manual changelog preview workflow that emits a
+  release-notes artifact without publishing a release.
+- Updated local `just` quality commands to match the CI gate sequence without
+  recreating root npm package files or the removed shell quality script.
+
+## 2026-06-13 - Docs Steward Instruction And Content Sync
+
+- Expanded root and nested `AGENTS.md` instructions for the compact FastMCP
+  surface, docs package ownership, generated reference ownership, bridge bundle
+  safety, helper boundaries, docs scripts, docs content, docs app UI, and GitHub
+  workflow docs commands.
+- Reworked placeholder docs into concrete guidance for concepts, provider
+  routing, AI agent handoffs, helper app boundaries, ADR criteria, and
+  comparisons with raw-tool DAW MCP patterns.
+- Updated README and docs guidance around the nested `docs/` JavaScript package,
+  docs-local `pnpm-lock.yaml`, and `pnpm --dir docs --ignore-workspace ...`
+  validation commands.
+- Removed stale governance language that pointed at removed root ledgers and
+  redirected public-surface governance to release notes, `goals/`, generated
+  references, and FastMCP surface inspection.
+- Added practical runbooks for operation workflows, validation evidence, and
+  live FL Studio actual-app smoke checks.
+
+## 2026-06-13 - uvx Installability and Docs Steward Closeout
+
+- Added a top-level `fl-mcp --version` flag so `uvx fl-mcp --version` is a
+  stable install smoke after publication, and
+  `uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version`
+  works from a source checkout without reusing stale same-version tool caches.
+- Extended `fl-mcp install --dry-run` with `uvx_server`,
+  `uvx_environment`, `uvx_harness_environment`, and
+  `uvx_selected_controller_environment` blocks. These provide stable command
+  templates such as `uvx --from fl-mcp python -m fl_mcp.bridge.host_client`
+  instead of requiring users to copy uv cache interpreter paths.
+- Updated README, installation, getting started, client setup, bridge protocol,
+  troubleshooting, and API reference docs around the uvx-first path.
+- Docs command examples now use repo-root-safe forms such as
+  `pnpm --dir docs --ignore-workspace docs:generate-reference`, `pnpm --dir docs --ignore-workspace check`, and
+  `pnpm --dir docs --ignore-workspace build`.
+- JavaScript/TypeScript package metadata is nested under `docs/`, keeping the
+  root package surface Python/uvx-only while preserving docs commands through
+  `pnpm --dir docs --ignore-workspace ...`.
+- Validation note: local source uvx smoke covered help, version, server dry-run,
+  install dry-run, doctor JSON, wheel execution, and FastMCP inspect.
+
+## 2026-06-12 - Compact FastMCP Agent Surface
+
+- Replaced the previous default visible 204-tool shape with one compact FastMCP surface containing exactly 12 tools:
+  `fl_status`, `fl_snapshot`, `fl_search_capabilities`, `fl_get_capability_schema`,
+  `fl_execute`, `fl_batch_execute`, `fl_plan`, `fl_apply`, `fl_render`,
+  `fl_analyze_audio`, `fl_manage_providers`, and `fl_browser`.
+- Kept the full 196-operation FL Studio catalog across 16 domains, but moved those operations behind canonical operation ids such as `mixer.set_track_volume`.
+- Added capability-first migration guidance: search capabilities, fetch schema, execute or batch by operation id, then verify with readback or snapshots.
+- Removed the public/full surface flag and minimal fallback path from the supported server contract; FastMCP is now required.
+- Registered workflow prompts for beat building, browser/plugin loading, automation, arrangement, safe mixing, and render/analyze flows.
+- Compatibility note: clients that called primitive visible tools must migrate to `fl_execute(operation_id=...)` or `fl_batch_execute`.
+- Related docs: [Public API Inventory](/docs/architecture/public-api-inventory).
+
+## 2026-06-06 - Packaged FL Host Bridge and FastMCP Task Alignment
+
+- Added a repo-owned FL Studio host bridge: `python -m fl_mcp.bridge.host_client`
+  on the MCP side plus `fl-bundle/controller/device_FL_MCP_Bridge.py` inside the
+  FL Studio MIDI scripting host, so actual-app live mode no longer depends on an
+  undocumented external executable placeholder.
+- Kept the direct packaged bridge runner (`python -m fl_mcp.bridge.runner`) and
+  `fl-bundle/controller/fl_mcp_bridge_runner.py` wrapper for harness and
+  diagnostic use.
+- Updated `fl-mcp install --dry-run` to report live and harness bridge commands,
+  the FL host request directory, and the controller script source/target paths.
+  `fl-mcp doctor` now reports the host-script setup step and executes a
+  read/mutation live-harness smoke path through the subprocess bridge contract.
+- Added a selected-controller subprocess adapter for sessions that already have
+  `FL Studio MCP Controller` selected, allowing actual-app smoke diagnostics to
+  run through `FLStudioBridge(mode="live")` and the typed bridge contracts.
+- Locked the runtime dependency to `fastmcp[tasks]>=3.4.2` so native FastMCP
+  task registration is available for render/export and audio analysis tools.
+- Compatibility note: bridge subprocess responses must now satisfy the typed
+  `BridgeLiveResponse` contract, including a required `message` field.
+- Compatibility note: transaction reports can now return `validation_failed`
+  for invalid known-operation payloads before bridge execution.
+- Compatibility note: install and doctor output now resolve the bundled FL
+  Studio controller script from the package/source tree, use the selected
+  script's private `bridge/` directory as the default host bridge directory,
+  and enforce private current-user ownership checks for the file bridge.
+- Compatibility note: `flapi-live` provider metadata advertises the shipped
+  default host-file live operations and selected-controller compatibility
+  capabilities for transport playback/tempo/loop/position, mixer reads and
+  reversible mixer edits, channel rack reads/routing/step/note edits, and plugin
+  inspection plus indexed parameter/preset actions. The selected-controller
+  tempo path uses FL's `mixer.getCurrentTempo` / `mixer.setCurrentTempo`
+  functions and normalizes the observed 1000x mixer tempo scale to normal BPM
+  values.
+  Other FL Studio tool families remain public typed catalog entries and
+  deterministic mock operations unless a provider manifest lists the exact live
+  capability.
+- Compatibility note: selected-controller compatibility calls are serialized by
+  a lock file and return `selected_controller_busy` when the fixed-file protocol
+  is already in use.
+- Related docs: [Bridge Protocol](/docs/architecture/bridge-protocol).
+
+## 2026-03-29 - Public surface semantics hardening
+
+- Kept `query_project` read-only/idempotent by making caller-supplied graph overrides ephemeral
+  instead of mutating server runtime state, while preserving both `query_project(domain, graph)`
+  and legacy `query_project(graph, domain)` invocation shapes.
+- Kept `manage_providers` on the public MCP surface while disabling the dynamic-loading
+  `discover` and `load_module` actions by default.
+- Preserved the existing public `list`, `startup`, and `shutdown` behavior to minimize
+  compatibility impact for runtime inspection and lifecycle orchestration.
+- Compatibility note: public calls to `manage_providers(action="discover")` or
+  `manage_providers(action="load_module")` now return deterministic error responses instead of
+  triggering provider discovery or module loading.
+- Related docs: [Public API Inventory](/docs/architecture/public-api-inventory).
+
+## 2026-03-15 - Production Hardening & Codebase Quality Pass
+
+### Runtime Hardening
+
+- Added thread-safe runtime state management and provider registry locking to prevent
+  concurrent-access races during multi-client sessions.
+- Public tool handlers now return structured error responses with typed error codes instead
+  of raising unhandled exceptions.
+- Integrated structured logging across bridge, transaction, and tool modules for
+  observability and debugging.
+- Reserved schema fields `safety_mode` and `freshness_policy` are documented; they are
+  accepted but ignored until a future release defines their semantics.
+- db.py: Added `_ENGINE_LOCK` for thread-safe lazy engine initialization, completing
+  singleton locking across all four concurrency-sensitive singletons (4/4).
+
+### Simplification Pass (−165 lines net)
+
+- Extracted `_resource_descriptor` factory in `server/factory.py` (−56 lines of repeated
+  resource-registration boilerplate).
+- Extracted `_dispatch_task_tool` helper in `tools/public.py` (−14 lines).
+- Added `_prop_getter` / `_prop_setter` mock handler factories in test helpers (−95 lines).
+- Extracted `_FLToolResponseBase` shared response fields to reduce schema duplication.
+- Extracted shared `domain_result_key()` to `transactions/interfaces.py` (DRY across apply
+  and planner modules).
+- Simplified `BridgeBackedProvider`: unified bridge init path and removed redundant
+  capability check.
+
+### Type Safety
+
+- `server/factory.py`: reduced `Any` usage from 24 to 6 via `TYPE_CHECKING` import pattern
+  for FastMCP and DebugTokenVerifier.
+- Replaced `dict[str, Any]` with `dict[str, object]` across `canonical.py`, `loading.py`,
+  `setup.py`, `auth/token.py`, `status.py`, and `graph/canonical.py`.
+- Tightened server parameter types in `server/app.py`, `http.py`, and `stdio.py`.
+- Added `@functools.cache` to operations module lazy imports for deterministic single-load.
+
+### Dead Code Cleanup
+
+- Removed 4 duplicate `ExecutionErrorCode` aliases.
+- Removed 2 unused Protocol classes.
+- Removed 3 unused TypedDict fields.
+
+### Test Expansion (71 → 632 tests, +561)
+
+- New test modules: mock generators (349 tests), bridge execution (21), resource surface
+  (13), server creation (9), CLI integration (17 → 18), operations (15), transaction edge
+  cases (35), schema validation (51), auth edge cases (51).
+- 5 new `conftest` fixtures for provider mocking, graph snapshots, and transaction stubs.
+
+### Metadata & Documentation
+
+- `pyproject.toml`: added PyPI classifiers, keywords, and project URLs.
+- Fixed domain count from 15 to 16 across docs; added `vfx` domain section to the
+  [Public API Inventory](/docs/architecture/public-api-inventory).
+
+## 2026-03-14 - Expanded FL Studio Public Surface and Deterministic Workflow Locking
+
+- Superseded the minimal-surface bootstrap policy with ADR-0005 so the typed FL Studio tool
+  families, project snapshot resources, task resources, and capability resources are part of the
+  public compatibility contract.
+- Updated the public API inventory to include `project://snapshot`, `project://arrangement`,
+  `render://jobs/{job_id}`, `audio://analyses/{analysis_id}`, `runtime://capabilities/{domain}`,
+  and the full explicit `connection_*`, `midi_*`, `transport_*`, `mixer_*`, `channels_*`,
+  `patterns_*`, `playlist_*`, `piano_roll_*`, `plugins_*`, `ui_*`, `general_*`, `render_*`, and
+  `audio_*` tool rosters.
+- Hardened CI, security, and release workflows to sync Python dependencies with
+  `uv sync --all-extras --dev --locked`, causing lock drift to fail fast instead of resolving
+  opportunistically in automation.
+- Compatibility note: existing public contract tools (`query_project`, `plan_changes`,
+  `apply_changes`, `render_project`, `analyze_audio`, `inspect_runtime`, `manage_providers`,
+  `runtime_health`) remain public; the FL Studio tool families are additive and require the runtime
+  implementation to keep their behavior aligned with the contract-first paths and the project/task
+  resource surface.
+- Provider-management hardening note: `manage_providers` keeps `list`, `startup`, and `shutdown`
+  behavior, while dynamic-loading actions and unsupported action names now return deterministic
+  public-surface errors.
+- Related docs: [Public API Inventory](/docs/architecture/public-api-inventory) and
+  [API & Schema Reference](/docs/reference/api-schema).
+
 ## Purpose
 
 Provide a chronological record of docs-visible behavior and tooling changes.

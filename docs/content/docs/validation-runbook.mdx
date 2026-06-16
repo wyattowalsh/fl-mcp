@@ -1,0 +1,104 @@
+---
+title: Validation Runbook
+description: Validation commands and evidence expectations for FL MCP docs and public surfaces.
+---
+
+Use this runbook after docs, public-surface, install, bridge, or provider changes.
+Run the narrowest relevant set, then expand when the change touches shared
+contracts.
+
+## Docs-Only Changes
+
+```bash
+pnpm --dir docs --ignore-workspace docs:verify-reference
+pnpm --dir docs --ignore-workspace check
+```
+
+Run the full docs app gates when MDX structure, navigation, scripts, package
+metadata, or layout changes:
+
+```bash
+pnpm --dir docs --ignore-workspace lint
+pnpm --dir docs --ignore-workspace build
+```
+
+For CI parity with the pinned docs package manager:
+
+```bash
+corepack pnpm@9.15.4 --dir docs --ignore-workspace check
+corepack pnpm@9.15.4 --dir docs --ignore-workspace lint
+corepack pnpm@9.15.4 --dir docs --ignore-workspace build
+```
+
+Remove generated outputs after validation unless the change intentionally
+tracks them:
+
+```bash
+rm -rf docs/.source docs/.next docs/out docs/tsconfig.tsbuildinfo
+```
+
+## Public Surface Changes
+
+```bash
+uv run python -m pytest tests/contract/test_public_surface.py -q
+uv run fastmcp inspect fastmcp.json --format mcp -o /tmp/fl-mcp-fastmcp-inspect-output.json
+```
+
+Record:
+
+- visible tool count;
+- prompt count;
+- resource and resource-template count;
+- internal operation count;
+- provider names;
+- representative `fl_execute` and `fl_batch_execute` results.
+
+## Installability Changes
+
+```bash
+uv run fl-mcp --version
+uv run fl-mcp server run --mode stdio --dry-run
+uv run fl-mcp doctor --format json
+uv run fl-mcp install --dry-run
+uv build
+uv run --with twine==6.2.0 twine check dist/*
+```
+
+For local uvx source smoke, use:
+
+```bash
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp doctor --format json
+```
+
+## Live Bridge Changes
+
+At minimum, run the harness path:
+
+```bash
+FL_MCP_BRIDGE_MODE=live \
+FL_MCP_FL_STUDIO_BRIDGE_CMD="python -m fl_mcp.bridge.runner --mode harness" \
+uv run pytest tests/unit/test_bridge_execution.py tests/unit/test_fl_surface_task_tools.py -q
+```
+
+For actual FL Studio validation, record:
+
+- absolute controller script source and target paths;
+- bridge directory path and permissions;
+- selected controller name inside FL Studio;
+- operation id;
+- request id;
+- provider and bridge mode;
+- readback result.
+
+## Final Evidence
+
+A complete validation note should include commands, statuses, key counts, and
+any residual risk. Avoid saying "manual smoke passed" without naming the exact
+tool call, operation id, provider, task id, or readback result.
+
+## Related Docs
+
+- [Getting Started](/docs/getting-started)
+- [Live FL Studio Smoke](/docs/live-fl-studio-smoke)
+- [Troubleshooting](/docs/troubleshooting)

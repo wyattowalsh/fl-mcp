@@ -21,7 +21,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       - name: Validate requested prerelease version
         run: |
           python - <<'PY'
@@ -38,28 +38,63 @@ jobs:
               )
           print(f"Version gate passed: {actual}")
           PY
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
-      - run: uv sync --all-extras --dev --frozen
+      - run: uv sync --all-extras --dev --locked
+      - run: uv run ty check --output-format github src/
       - run: uv run pytest -q
+
+  docs:
+    runs-on: ubuntu-latest
+    needs: gates
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093  # v6.0.8
+        with:
+          version: '9.15.4'
+      - name: Sync Python dependencies for docs reference generation
+        run: uv sync --all-extras --dev --locked
+      - name: Install docs dependencies
+        run: pnpm --dir docs --ignore-workspace install --frozen-lockfile
+      - name: Verify generated docs references
+        run: pnpm --dir docs --ignore-workspace docs:verify-reference
+      - name: Lint docs package
+        run: pnpm --dir docs --ignore-workspace lint
+      - name: Check docs content
+        run: pnpm --dir docs --ignore-workspace check
+      - name: Build docs
+        run: pnpm --dir docs --ignore-workspace build
 
   build:
     runs-on: ubuntu-latest
-    needs: gates
+    needs: [gates, docs]
     timeout-minutes: 20
     permissions:
       contents: read
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
+      - run: uv sync --all-extras --dev --locked
       - run: uv build
+      - name: Validate distributions
+        run: uv run --with twine==6.2.0 twine check dist/*
       - name: Validate built artifact versions
         run: |
           python - <<'PY'
@@ -115,6 +150,19 @@ jobs:
                   )
               print(f"{artifact.name}: version {actual} verified")
           PY
+      - name: Smoke wheel with uvx
+        run: |
+          wheel="$(python - <<'PY'
+          from pathlib import Path
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one wheel, found {len(wheels)}.")
+          print(wheels[0])
+          PY
+          )"
+          uvx --from "${wheel}" fl-mcp --version
+          uvx --from "${wheel}" fl-mcp server run --mode stdio --dry-run
       - name: Generate SHA256SUMS
         run: |
           python - <<'PY'
@@ -132,10 +180,10 @@ jobs:
                   checksum_file.write(f"{digest}  {artifact.name}\n")
           PY
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32  # v4.1.0
         with:
           subject-path: dist/*
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: dist-prerelease
           path: dist/*
@@ -147,7 +195,7 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: dist-prerelease
           path: dist
@@ -155,7 +203,7 @@ jobs:
         run: |
           cd dist
           sha256sum --check SHA256SUMS
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
       - name: Validate distributions
@@ -163,7 +211,7 @@ jobs:
           python -m pip install --upgrade twine==6.2.0
           python -m twine check dist/*
       - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0 # v1.9.0
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
           packages-dir: dist/
           repository-url: https://test.pypi.org/legacy/
@@ -177,7 +225,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
         with:
           name: dist-prerelease
           path: dist
@@ -185,9 +233,10 @@ jobs:
         run: |
           cd dist
           sha256sum --check SHA256SUMS
-      - uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+      - uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda  # v3.0.0
         with:
           tag_name: v${{ inputs.version }}
           prerelease: true
+          make_latest: false
           generate_release_notes: true
           files: dist/*

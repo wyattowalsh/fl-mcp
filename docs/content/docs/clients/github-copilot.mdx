@@ -5,22 +5,46 @@ description: Configure FL MCP for GitHub Copilot integrations.
 
 ## Prerequisites
 
-- Local FL MCP runtime is installed and reachable.
+- `uv` is installed.
 - GitHub Copilot MCP integration path is enabled in your environment.
+- Live FL Studio mode is optional; mock mode works without FL Studio.
 
 ## Configuration
 
-1. Register FL MCP endpoint and transport settings in Copilot integration config.
-2. Confirm auth/provider values are available at runtime.
-3. Refresh integration state so new endpoints are loaded.
+Use FL MCP as a stdio server.
+
+Published package:
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+Local checkout:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+For live FL Studio mode, run `fl-mcp install --dry-run` and copy the matching
+`uvx_environment` values into the Copilot MCP server environment.
 
 ## Verification
 
-- Copilot integration can discover FL MCP endpoints.
-- Representative tool calls complete successfully.
+- Copilot integration discovers exactly 12 FL MCP tools.
+- `fl_status` reports `status="ok"` and `internal_operation_count=216`.
+- `fl_search_capabilities` and `fl_get_capability_schema` resolve a target
+  operation.
+- A representative `fl_execute` mock call succeeds before enabling live mode.
 
 ## Related Docs
 
 - [Client Setup](/docs/clients)
 - [Getting Started](/docs/getting-started)
+- [Operation Workflows](/docs/operation-workflows)
 - [Troubleshooting](/docs/troubleshooting)

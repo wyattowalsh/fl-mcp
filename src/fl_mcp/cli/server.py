@@ -7,6 +7,7 @@ import json
 
 from fl_mcp import __version__
 from fl_mcp.config import RuntimeConfig, StreamableHTTPConfig
+from fl_mcp.config.settings import settings
 from fl_mcp.logging import configure_logging
 from fl_mcp.server.http import run_streamable_http
 from fl_mcp.server.stdio import run_stdio
@@ -15,6 +16,7 @@ from fl_mcp.server.stdio import run_stdio
 def build_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``server`` subcommand for managing the MCP server runtime."""
     server_parser = subparsers.add_parser("server", help="Manage FL MCP server runtime")
     server_subparsers = server_parser.add_subparsers(dest="server_command", required=True)
 
@@ -41,6 +43,7 @@ def build_parser(
 
 
 def handle_run(args: argparse.Namespace) -> int:
+    """Launch the MCP server in stdio or streamable-HTTP mode."""
     runtime = RuntimeConfig(
         environment=args.environment,
         service_name=args.service_name,
@@ -55,6 +58,7 @@ def handle_run(args: argparse.Namespace) -> int:
             "environment": runtime.environment,
             "service_name": runtime.service_name,
             "service_version": runtime.service_version,
+            "surface": "compact",
         },
         "http": {
             "host": http.host,
@@ -67,6 +71,18 @@ def handle_run(args: argparse.Namespace) -> int:
     if args.dry_run:
         print(json.dumps(payload, indent=2))
         return 0
+
+    production_http_without_auth = (
+        args.mode == "http"
+        and runtime.environment in {"prod", "production"}
+        and not settings.auth_token
+    )
+    if production_http_without_auth:
+        print(
+            "FL_MCP_AUTH_TOKEN is required for production HTTP mode.",
+            flush=True,
+        )
+        return 2
 
     configure_logging(args.log_level)
     if args.mode == "stdio":

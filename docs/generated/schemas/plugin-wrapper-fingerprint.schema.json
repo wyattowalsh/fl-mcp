@@ -1,0 +1,83 @@
+{
+  "description": "Local wrapper identity used to detect stale parameter mappings.",
+  "properties": {
+    "bridge_mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bridge Mode"
+    },
+    "fl_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fl Version"
+    },
+    "format": {
+      "default": "unknown",
+      "enum": [
+        "au",
+        "vst",
+        "vst3",
+        "clap",
+        "fst",
+        "fxp",
+        "fxb",
+        "unknown"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "parameter_count": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Count"
+    },
+    "parameter_name_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Name Hash"
+    },
+    "plugin_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Plugin Name"
+    }
+  },
+  "title": "PluginWrapperFingerprint",
+  "type": "object"
+}

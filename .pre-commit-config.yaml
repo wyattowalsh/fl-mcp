@@ -1,44 +1,60 @@
+minimum_pre_commit_version: "3.8.0"
+
+default_language_version:
+  python: python3.12
+
+exclude: |
+  (?x)^(
+    \.venv/|
+    docs/(node_modules|\.next|\.source|out)/|
+    dist/|
+    .*__pycache__/|
+    .*\.egg-info/
+  )
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
-      - id: check-yaml
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-ast
+      - id: check-builtin-literals
+      - id: check-case-conflict
+      - id: check-docstring-first
+      - id: check-executables-have-shebangs
+      - id: check-illegal-windows-names
       - id: check-json
-      - id: check-toml
       - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: check-toml
+      - id: check-vcs-permalinks
+      - id: check-yaml
+      - id: debug-statements
+      - id: destroyed-symlinks
+      - id: detect-private-key
       - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: forbid-new-submodules
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
       - id: trailing-whitespace
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.2
+    rev: v0.15.17
     hooks:
-      - id: ruff
-        args: [--fix]
+      - id: ruff-check
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.49
     hooks:
-      - id: isort
-
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
-    hooks:
-      - id: mypy
-        additional_dependencies:
-          - types-PyYAML
-          - pydantic>=2.8.0
-          - pydantic-settings>=2.3.0
-          - sqlmodel>=0.0.22
-          - alembic>=1.13.0
-          - pytest>=8.2.0
+      - id: ty
 
   - repo: https://github.com/adrienverge/yamllint.git
-    rev: v1.37.0
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args:
@@ -46,3 +62,12 @@ repos:
             "-d",
             "{extends: default, rules: {line-length: disable, document-start: disable, truthy: disable}}",
           ]
+
+  - repo: local
+    hooks:
+      - id: uv-lock-check
+        name: uv lock check
+        entry: uv lock --check
+        language: system
+        pass_filenames: false
+        files: ^(pyproject\.toml|uv\.lock)$

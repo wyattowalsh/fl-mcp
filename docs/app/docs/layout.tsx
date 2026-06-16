@@ -12,6 +12,8 @@ export default function Layout({ children }: { children: ReactNode }) {
       }}
       links={[
         { text: 'Docs Home', url: '/docs' },
+        { text: 'Workflows', url: '/docs/operation-workflows' },
+        { text: 'Validation', url: '/docs/validation-runbook' },
         { text: 'Providers', url: '/docs/providers' },
         { text: 'ADR Index', url: '/docs/adr' },
         { text: 'Roadmap', url: '/docs/roadmap' },

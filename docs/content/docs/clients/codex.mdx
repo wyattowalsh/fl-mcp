@@ -5,22 +5,48 @@ description: Configure FL MCP for Codex workflows.
 
 ## Prerequisites
 
-- Local FL MCP runtime is installed and reachable.
-- Codex session has access to repository-local MCP configuration.
+- `uv` is installed.
+- Codex session can launch local stdio MCP commands.
+- Live FL Studio mode is optional; mock mode works without FL Studio.
 
 ## Configuration
 
-1. Configure Codex to use the project-local FL MCP server entry.
-2. Verify provider/auth values are available in the session environment.
-3. Confirm reference generation is up to date before workflows.
+Use FL MCP as a stdio server.
+
+Published package:
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+Local checkout:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+For live FL Studio mode, run `fl-mcp install --dry-run` and copy the matching
+`uvx_environment` values into the Codex MCP server environment. Use
+`uvx_selected_controller_environment` when FL Studio already has the compatibility
+controller selected.
 
 ## Verification
 
-- Codex discovers FL MCP capabilities in-session.
-- Representative tool calls execute without schema mismatch errors.
+- Codex discovers exactly 12 FL MCP tools.
+- `fl_status` reports `status="ok"` and `internal_operation_count=216`.
+- `fl_search_capabilities` and `fl_get_capability_schema` resolve a target
+  operation.
+- A representative `fl_execute` mock call succeeds before enabling live mode.
 
 ## Related Docs
 
 - [Client Setup](/docs/clients)
+- [Operation Workflows](/docs/operation-workflows)
 - [API & Schema Reference](/docs/reference/api-schema)
 - [Troubleshooting](/docs/troubleshooting)

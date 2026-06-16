@@ -1,0 +1,83 @@
+{
+  "description": "Mapping from semantic plain values to FL's normalized plugin values.",
+  "properties": {
+    "default_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Default Value"
+    },
+    "enum_values": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Enum Values",
+      "type": "array"
+    },
+    "expression": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expression"
+    },
+    "kind": {
+      "default": "normalized",
+      "enum": [
+        "normalized",
+        "linear",
+        "log_frequency",
+        "db",
+        "enum",
+        "percent",
+        "bipolar",
+        "milliseconds",
+        "tempo_synced",
+        "note_pitch",
+        "custom"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "max_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Value"
+    },
+    "min_value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Min Value"
+    }
+  },
+  "title": "PluginValueMap",
+  "type": "object"
+}

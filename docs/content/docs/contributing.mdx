@@ -12,19 +12,39 @@ Define the baseline workflow for safe, reviewable contributions to FL MCP docs.
 - Repository clone with dependencies installed.
 - Familiarity with project guardrails and architecture references.
 - Ability to run docs quality checks locally.
+- Current `AGENTS.md` files reviewed for the scope being edited.
 
 ## Steps
 
 1. Scope changes to owned files and avoid unrelated modifications.
 2. Update documentation content and references in the same change set.
-3. Run `pnpm lint`, `pnpm check`, and `pnpm build` in `docs/`.
-4. Include clear file-level notes for reviewers.
+3. If generated references are affected, run
+   `pnpm --dir docs --ignore-workspace docs:generate-reference`.
+4. Run the docs validation gates:
+
+   ```bash
+   pnpm --dir docs --ignore-workspace lint
+   pnpm --dir docs --ignore-workspace check
+   pnpm --dir docs --ignore-workspace build
+   ```
+
+5. Include clear file-level notes for reviewers.
+
+## Docs Ownership
+
+- Prose pages live in `docs/content/docs/`.
+- Generated reference pages live in `docs/content/docs/reference/generated/`.
+- JSON schemas live in `docs/generated/schemas/`.
+- Build and generated framework outputs live in ignored paths such as
+  `docs/.source`, `docs/.next`, and `docs/out`.
+- The docs package and pnpm lockfile live under `docs/`.
 
 ## Verification
 
 - Required docs checks pass locally.
 - Internal links resolve and headings remain consistent.
 - Generated references are current with no drift.
+- Public-surface claims match the current code and public API inventory.
 
 ## Related Docs
 

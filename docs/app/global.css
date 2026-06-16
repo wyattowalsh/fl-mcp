@@ -4,11 +4,16 @@
   --fd-primary: oklch(0.62 0.16 264);
   --fd-accent: oklch(0.74 0.13 193);
   --fd-background: oklch(0.98 0.01 255);
+  --fd-surface: oklch(1 0 0);
+  --fd-surface-dark: oklch(0.15 0 0);
+  --fd-border: oklch(0.9 0.01 255);
+  --fd-card: oklch(1 0 0);
+  --fd-card-foreground: oklch(0.15 0 0);
 }
 
 body {
   margin: 0;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: var(--font-geist), system-ui, sans-serif;
 }
 
 .skip-link {
@@ -16,14 +21,14 @@ body {
   left: -9999px;
   top: 0.5rem;
   z-index: 1000;
-  background: #0f172a;
-  color: #ffffff;
+  background: var(--fd-surface-dark);
+  color: var(--fd-surface);
   border-radius: 0.5rem;
   padding: 0.6rem 0.9rem;
   text-decoration: none;
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
   left: 0.5rem;
 }
 
@@ -40,18 +45,60 @@ body {
   letter-spacing: 0.08em;
 }
 
+/* Asymmetric grid with container queries */
 .card-grid {
+  container-type: inline-size;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: 1fr;
   gap: 1rem;
   margin-top: 2rem;
 }
 
+@container (min-width: 640px) {
+  .card-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+@container (min-width: 960px) {
+  .card-grid {
+    grid-template-columns: 3fr 2fr 2fr;
+  }
+}
+
 .card {
-  border: 1px solid hsl(var(--fd-border) / 1);
+  border: 1px solid var(--fd-border);
   border-radius: 12px;
   padding: 1rem;
   text-decoration: none;
-  color: hsl(var(--fd-card-foreground) / 1);
-  background: hsl(var(--fd-card) / 1);
+  color: var(--fd-card-foreground);
+  background: var(--fd-card);
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.card:hover {
+  border-color: color-mix(in oklch, var(--fd-primary) 55%, transparent);
+  background: color-mix(in oklch, var(--fd-accent) 8%, var(--fd-card));
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--fd-primary);
+  outline-offset: 3px;
+  border-color: color-mix(in oklch, var(--fd-primary) 65%, transparent);
+}
+
+/* Reduced motion guard */
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .skip-link {
+    transition: none;
+  }
+}
+
+/* Fluid typography */
+h1 {
+  font-size: clamp(2rem, 5vw + 1rem, 3.5rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }

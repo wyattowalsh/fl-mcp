@@ -1,33 +1,21 @@
 ## Summary
 
+<!-- What does this PR do and why? -->
+
+## Changes
+
+<!-- Bullet list of changes -->
+
 -
 
-## Type of Change
+## Test Plan
 
-- [ ] feat
-- [ ] fix
-- [ ] docs
-- [ ] refactor
-- [ ] test
-- [ ] chore
+<!-- How was this tested? -->
 
-## Validation
+- [ ] Unit tests pass
+- [ ] Existing tests unaffected
+- [ ] New tests added (if applicable)
 
-- [ ] Unit tests updated/passing
-- [ ] Integration tests updated/passing
-- [ ] Contract tests updated/passing
-- [ ] Docs generated and committed (if applicable)
-- [ ] Security/policy checks passing
+## Related Issues
 
-## Release Notes
-
-- [ ] Requires prerelease
-- [ ] Requires stable release
-- [ ] Requires migration notes
-
-## Checklist
-
-- [ ] Linked issue(s)
-- [ ] Added or updated tests
-- [ ] Updated docs and examples
-- [ ] No secrets, credentials, or private data introduced
+<!-- Link related issues: Fixes #123, Relates to #456 -->

@@ -17,9 +17,24 @@ const cards = [
     description: 'Configure Claude Code, Codex, Gemini CLI, and Copilot.'
   },
   {
+    title: 'Operation Workflows',
+    href: '/docs/operation-workflows',
+    description: 'Recipes for executing and verifying compact-surface operations.'
+  },
+  {
     title: 'Providers',
     href: '/docs/providers',
     description: 'Provider setup models, caveats, and support boundaries.'
+  },
+  {
+    title: 'Validation Runbook',
+    href: '/docs/validation-runbook',
+    description: 'Command groups and evidence expectations for release work.'
+  },
+  {
+    title: 'Live FL Studio Smoke',
+    href: '/docs/live-fl-studio-smoke',
+    description: 'Actual-app bridge validation checklist and timeout interpretation.'
   },
   {
     title: 'ADR Index',
@@ -35,8 +50,9 @@ export default function LandingPage() {
         <p className="eyebrow">FL Studio MCP</p>
         <h1>Docs Hub</h1>
         <p>
-          A documentation app built with Fumadocs + pnpm, including curated guides,
-          references, provider instructions, and AI workflow playbooks.
+          A documentation app built with Fumadocs + pnpm, including curated
+          guides, compact-surface recipes, provider instructions, validation
+          runbooks, and AI workflow playbooks.
         </p>
       </section>
       <section className="card-grid">

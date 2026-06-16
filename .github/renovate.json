@@ -31,7 +31,7 @@
     },
     {
       "matchManagers": ["npm"],
-      "matchFileNames": ["package.json", "docs/package.json", "pnpm-lock.yaml"],
+      "matchFileNames": ["docs/package.json", "docs/pnpm-lock.yaml"],
       "groupName": "node-dependencies",
       "labels": ["dependencies", "javascript"]
     },

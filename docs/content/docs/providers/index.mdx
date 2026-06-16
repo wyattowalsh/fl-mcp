@@ -1,6 +1,95 @@
 ---
 title: Provider Docs
-description: Provider-specific setup and caveats.
+description: Provider support matrix and routing caveats for FL MCP.
 ---
 
-Document each provider's auth model, tool support, and limits in this section.
+Providers tell FL MCP where an operation can safely run. The same operation id
+may be available in mock mode, harness mode, selected-controller compatibility
+mode, or a real FL Studio bridge mode with different safety expectations.
+Provider support is tracked at operation level, not inferred from a whole FL
+domain.
+
+## Provider Summary
+
+| Provider | Purpose | Coverage |
+| --- | --- | --- |
+| `mock` | Deterministic local and CI execution | Full 216-operation catalog when explicitly requested or runtime is mock |
+| `flapi-live` | Packaged host-file bridge to FL Studio | Full catalog forced-live attempts; success only when FL confirms |
+| `piano-roll-script` | FL Studio piano-roll scripting path | Exact pattern and piano-roll operation capabilities |
+| `midi-fallback` | MIDI/SysEx fallback path | Exact connection, MIDI, channel, transport, and device operation capabilities |
+
+## Default Routing
+
+Use `provider="auto"` unless the caller has a concrete reason to force a
+provider. Auto mode is not a provider filter during discovery. During execution,
+auto keeps mock workflows deterministic when the runtime is mock. In live mode,
+auto resolves to `flapi-live` for every catalog operation and attempts the
+bundled bridge path instead of falling back to mock.
+
+Use `provider="flapi-live"` only when:
+
+- `FL_MCP_BRIDGE_MODE=live` is set.
+- `FL_MCP_FL_STUDIO_BRIDGE_CMD` points to a valid packaged bridge command.
+- The FL Studio controller script is installed and selected.
+- The caller accepts that `attemptable` operations can fail with structured
+  `api_missing`, `unsupported_host_behavior`, or `host_exception` results when
+  FL does not expose a compatible callable.
+
+## Forced-Live Behavior
+
+The packaged host-file bridge has verified smoke coverage for:
+
+- `general.get_version`
+- `general.get_project_title`
+- `transport.get_tempo`
+- `transport.get_state`
+- `transport.set_tempo`
+- `transport.play`
+- `transport.pause`
+- `transport.stop`
+
+Every other catalog operation is advertised as `attemptable` for `flapi-live`.
+The bridge probes candidate FL Python modules/functions at runtime and returns
+one of these outcomes:
+
+- `status="ok"` only when a callable returns without error.
+- `api_missing` when no candidate callable exists in the FL host.
+- `unsupported_host_behavior` when candidate callables exist but reject every
+  attempted payload shape.
+- `path_unavailable` when a live file path is absent or uses `mock://`.
+- `host_exception` when FL exposes a callable but the call fails.
+- `bridge_timeout` or bridge process errors when the host bridge is unavailable.
+
+The selected-controller compatibility adapter remains useful evidence for
+transport, mixer, channel, and plugin mappings, but the bundled host-file bridge
+is the canonical live target.
+
+## Capability Metadata
+
+Before executing, agents should call:
+
+1. `fl_search_capabilities`
+2. `fl_get_capability_schema`
+3. `fl_execute` or `fl_batch_execute`
+
+The schema response includes provider support, safety class, example payloads,
+and readback guidance. Treat that response as the operation contract. The
+compatibility field `provider_support` remains a provider-name list, and
+`provider_support_details` carries structured support records with:
+
+- `provider`
+- `status`: `available`, `attemptable`, `requires_setup`, `mock_only`, or `unsupported`
+- `mode`: `mock`, `host_file_bridge`, `selected_controller`, or `custom_provider`
+- `preconditions`
+- `readback_operation_id`
+- `failure_policy`
+
+Unknown provider filters in `fl_search_capabilities` return an explicit error
+instead of an empty result set.
+
+## Related Docs
+
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
+- [Live FL Studio Smoke](/docs/live-fl-studio-smoke)
+- [Troubleshooting](/docs/troubleshooting)

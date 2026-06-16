@@ -16,6 +16,18 @@
           "title": "Payload",
           "type": "object"
         },
+        "provider": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider"
+        },
         "rollback_class": {
           "enum": [
             "fully_transactional",
@@ -56,6 +68,7 @@
     },
     "freshness_policy": {
       "default": "strict",
+      "description": "Reserved \u2014 accepted but not yet enforced.",
       "enum": [
         "strict",
         "allow-stale"
@@ -91,6 +104,7 @@
     },
     "safety_mode": {
       "default": "standard",
+      "description": "Reserved \u2014 accepted but not yet enforced.",
       "enum": [
         "strict",
         "standard",

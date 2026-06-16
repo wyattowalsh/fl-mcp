@@ -3,18 +3,52 @@ title: Architecture
 description: High-level architecture and system boundaries.
 ---
 
-FL MCP is organized around a small public MCP surface, a canonical project graph,
-and transaction-safe mutations.
+FL MCP is organized around a governed compact FastMCP surface, a canonical project
+graph, and transaction-safe mutations. The visible MCP surface is exactly 12 tools,
+5 resources, 3 resource templates, and first-class workflow prompts. The full 216
+operation FL catalog remains available behind capability search, schema lookup,
+`fl_execute`, and `fl_batch_execute`.
 
 ## Core Boundaries
 
-- `src/fl_mcp/server`: transport bootstrap and runtime server wiring.
-- `src/fl_mcp/resources` and `src/fl_mcp/tools`: public MCP read/write surface.
+- `src/fl_mcp/server`: transport bootstrap (HTTP, stdio) and runtime server wiring.
+  Server parameter types are tightly scoped; `TYPE_CHECKING` guards keep FastMCP
+  out of the runtime import graph.
+- `src/fl_mcp/resources` and `src/fl_mcp/tools`: compact MCP read/write surface.
+  Resource descriptors are generated via a shared `_resource_descriptor` factory.
+  Resources remain the preferred read path; the compact tools guide agents through
+  status/snapshot, capability search, schema lookup, execution, batching, and
+  readback verification.
 - `src/fl_mcp/transactions`: planning + apply workflow with rollback semantics.
-- `src/fl_mcp/schemas`: canonical typed contracts for graph and transactions.
-- `src/fl_mcp/providers`: provider runtime extension point.
+  Both planner and apply share a `domain_result_key()` helper from
+  `transactions/interfaces.py`.
+- `src/fl_mcp/schemas`: canonical typed contracts for graph, transactions, FL tool
+  families, compact surface responses, and runtime resources.
+- `src/fl_mcp/providers`: provider runtime extension point with adapter layer and
+  built-in provider registry. `BridgeBackedProvider` uses a unified bridge init path.
+- `src/fl_mcp/operations`: lazy-loaded operation dispatch with `@functools.cache` for
+  deterministic single-load semantics.
+- `src/fl_mcp/runtime`: runtime state management and health probes with thread-safe
+  singleton locking.
+- `src/fl_mcp/bridge`: FL Studio bridge layer connecting MCP operations to the DAW.
+
+## Thread Safety
+
+All four concurrency-sensitive singletons use dedicated locks:
+
+1. Runtime state registry
+2. Provider registry
+3. Server instance
+4. Database engine (`_ENGINE_LOCK`)
+
+## Test Coverage
+
+The test suite covers contract compliance, unit behavior, schema validation, auth edge
+cases, bridge execution, compact FastMCP discovery, and CLI integration.
 
 ## Architecture Governance
 
 - [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
 - [Reuse Audit](/docs/architecture/reuse-audit)
+- [Validation Runbook](/docs/validation-runbook)

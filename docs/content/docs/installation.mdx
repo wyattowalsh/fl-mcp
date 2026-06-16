@@ -5,29 +5,137 @@ description: Installation and local environment setup.
 
 ## Purpose
 
-Prepare a reproducible local environment for FL MCP development and docs validation.
+Install and run FL MCP as a compact FastMCP server. Use `uvx` for normal
+agent/client usage and `uv run` only when developing from the repository.
 
 ## Prerequisites
 
-- Access to the repository workspace.
-- Supported Node version with `pnpm`.
-- Supported Python environment with project dependencies.
+- `uv` installed.
+- Python 3.12 or newer available to `uv`.
+- Access to at least one MCP-capable client.
+- Optional: FL Studio 2025 for live-mode validation.
+- Optional for docs work: supported Node version with `pnpm`.
 
-## Steps
+## uvx Install
 
-1. Install JavaScript dependencies with `pnpm install`.
-2. Install Python dependencies for runtime and tests.
-3. Generate documentation references with `pnpm docs:generate-reference`.
-4. Start docs locally with `pnpm dev` when needed.
+Use the published package with `uvx`:
+
+```bash
+uvx fl-mcp --version
+uvx fl-mcp server run --mode stdio --dry-run
+uvx fl-mcp doctor --format json
+uvx fl-mcp install --dry-run
+```
+
+Before publication, or when testing a source checkout, point `uvx` at the
+checkout:
+
+```bash
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp server run --mode stdio --dry-run
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp doctor --format json
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp install --dry-run
+```
+
+## MCP Client Command
+
+For a published package:
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+For a local checkout:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+The server defaults to deterministic mock mode, so MCP clients can discover all
+12 visible tools and execute the internal 216-operation catalog without FL
+Studio.
+
+For local stdio use, authentication is optional. For HTTP deployments with
+`--environment production` or `--environment prod`, set `FL_MCP_AUTH_TOKEN`; the
+server refuses to launch production HTTP without it.
+
+## Live FL Studio Mode
+
+1. Run `uvx fl-mcp install --dry-run`, or the local-source equivalent above.
+2. Copy the reported `FL_MCP_BRIDGE_MODE`, `FL_MCP_FL_STUDIO_BRIDGE_CMD`, and
+   `FL_MCP_FL_STUDIO_BRIDGE_DIR` values into the target client environment.
+3. Prefer the `uvx_environment` block for stable client configuration. It uses
+   command templates such as:
+
+   ```bash
+   uvx --from fl-mcp python -m fl_mcp.bridge.host_client
+   ```
+
+   For local-source testing, replace `fl-mcp` after `--from` with the absolute
+   checkout path and add `--with-editable /absolute/path/to/fl-mcp`.
+4. Copy the reported `fl_studio_controller.source` file to the reported
+   `fl_studio_controller.target_file` path. On macOS this is normally under
+   `~/Documents/Image-Line/FL Studio/Settings/Hardware/FL MCP Bridge/` or
+   `~/Documents/Image-Line 2/FL Studio/Settings/Hardware/FL MCP Bridge/`,
+   depending on the active FL Studio user-data folder.
+5. Open FL Studio, then select `FL MCP Bridge` from MIDI Settings >
+   Controller type so the bundled MIDI script can poll the bridge directory.
+   The reported bridge directory is normally
+   `~/Documents/Image-Line/FL Studio/Settings/Hardware/FL MCP Bridge/bridge`
+   or the equivalent active user-data path. Override paths must be
+   current-user-owned directories with private permissions on POSIX.
+6. Use `uvx_harness_environment` for CI or local smoke validation when FL Studio
+   is not available.
+7. If FL Studio already has `FL Studio MCP Controller` selected, use
+   `uvx_selected_controller_environment` for actual-app diagnostics without
+   changing the current controller assignment.
+
+## Repository Development
+
+```bash
+uv sync --all-extras --dev --locked
+uv run fl-mcp server run --mode stdio --dry-run
+uv run fl-mcp doctor --format json
+uv run fl-mcp install --dry-run
+pnpm --dir docs --ignore-workspace docs:generate-reference
+pnpm --dir docs --ignore-workspace dev
+```
+
+The docs app is a standalone nested package. Keep docs package metadata under
+`docs/` and use the docs-local lockfile:
+
+```text
+docs/package.json
+docs/pnpm-lock.yaml
+docs/tsconfig.json
+docs/next.config.mjs
+docs/source.config.ts
+```
+
+Do not add root-level npm package files just to expose docs aliases.
 
 ## Verification
 
-- `pnpm lint` succeeds.
-- `pnpm check` succeeds.
-- `pnpm build` succeeds for the docs app.
+- `uvx fl-mcp --version` reports the package version after publication.
+- `uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version`
+  reports the local package version before publication.
+- `uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp doctor --format json`
+  reports an `ok` bridge-harness check.
+- `pnpm --dir docs --ignore-workspace check` succeeds.
+- `pnpm --dir docs --ignore-workspace build` succeeds for the docs app.
+- When FL Studio is available and the controller is selected, a live bridge
+  smoke can read transport state and perform a safe tempo mutation through the
+  compact `fl_execute` / `fl_batch_execute` surface.
 
 ## Related Docs
 
 - [Getting Started](/docs/getting-started)
+- [Client Setup](/docs/clients)
 - [Contributing](/docs/contributing)
 - [Troubleshooting](/docs/troubleshooting)

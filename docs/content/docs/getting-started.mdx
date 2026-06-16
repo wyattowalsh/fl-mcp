@@ -5,29 +5,113 @@ description: First-run path for FL MCP.
 
 ## Purpose
 
-Get a clean first run of FL MCP with validated connectivity.
+Get a clean first run of FL MCP with validated connectivity and a confirmed
+compact FastMCP surface.
 
 ## Prerequisites
 
-- Node and `pnpm` installed for docs/client tooling.
-- Python runtime and project dependencies installed.
+- `uv` installed.
+- Python 3.12 or newer available to `uv`.
 - Access to at least one MCP-capable client.
+- Optional for live mode: FL Studio with the bundled controller script installed
+  and selected.
+- Optional for docs work: `pnpm`, using the nested package in `docs/`.
 
 ## Steps
 
-1. Install project dependencies.
-2. Configure your target provider and client integration.
-3. Run initial health/handshake checks.
-4. Confirm reference docs are generated and current.
+1. Confirm the package entrypoint:
+
+   ```bash
+   uvx fl-mcp --version
+   ```
+
+   For a local checkout before publication:
+
+   ```bash
+   uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version
+   ```
+
+2. Confirm the server command without launching a long-running stdio process:
+
+   ```bash
+   uvx fl-mcp server run --mode stdio --dry-run
+   ```
+
+   Local checkout form:
+
+   ```bash
+   uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp server run --mode stdio --dry-run
+   ```
+
+3. Run diagnostics:
+
+   ```bash
+   uvx fl-mcp doctor --format json
+   ```
+
+   The source-checkout form is:
+
+   ```bash
+   uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp doctor --format json
+   ```
+
+4. Add FL MCP to the MCP client as a stdio server.
+
+   Published package:
+
+   ```json
+   {
+     "command": "uvx",
+     "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+   }
+   ```
+
+   Local checkout:
+
+   ```json
+   {
+     "command": "uvx",
+     "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+   }
+   ```
+
+5. In the MCP client, list tools and confirm the visible roster is exactly:
+   `fl_status`, `fl_snapshot`, `fl_search_capabilities`,
+   `fl_get_capability_schema`, `fl_execute`, `fl_batch_execute`, `fl_plan`,
+   `fl_apply`, `fl_render`, `fl_analyze_audio`, `fl_manage_providers`, and
+   `fl_browser`.
+
+6. Start in mock mode unless live FL Studio control is required. Mock mode is
+   deterministic and exposes the full 216-operation internal catalog through
+   `fl_search_capabilities`, `fl_get_capability_schema`, `fl_execute`, and
+   `fl_batch_execute`.
+
+7. For live FL Studio mode, run `fl-mcp install --dry-run` and follow the
+   `uvx_environment`, `uvx_harness_environment`, or
+   `uvx_selected_controller_environment` block that matches the target setup.
+
+8. For docs work, keep pnpm scoped to the nested docs package:
+
+   ```bash
+   pnpm --dir docs --ignore-workspace check
+   ```
 
 ## Verification
 
-- Runtime health endpoint reports healthy status.
-- Client can discover expected MCP surface.
-- No docs check or build failures.
+- `fl_status` returns `status="ok"` and `internal_operation_count=216`.
+- `fl_search_capabilities` can find an operation such as
+  `mixer.set_track_volume`.
+- `fl_get_capability_schema` returns a request schema for that operation.
+- `fl_execute` succeeds in mock mode for a safe representative operation.
+- `fl_batch_execute` succeeds for an ordered read/set/readback workflow.
+- `fl_render` and `fl_analyze_audio` return task ids in mock mode.
+- `pnpm --dir docs --ignore-workspace check` passes after docs changes.
 
 ## Related Docs
 
 - [Installation](/docs/installation)
+- [Concepts](/docs/concepts)
+- [Operation Workflows](/docs/operation-workflows)
 - [Client Setup](/docs/clients)
+- [Validation Runbook](/docs/validation-runbook)
 - [Troubleshooting](/docs/troubleshooting)

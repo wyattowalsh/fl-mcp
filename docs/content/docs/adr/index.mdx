@@ -1,6 +1,40 @@
 ---
 title: ADR Index
-description: Architectural decision records index.
+description: Architecture decision record guidance for FL MCP.
 ---
 
-Track major design decisions here. Add new ADRs under this section to preserve historical context.
+Use ADRs for durable architecture decisions: public surface shape, bridge
+security policy, provider model, schema contracts, docs framework choices, and
+release governance.
+
+## Current Decision Sources
+
+This working tree currently keeps release-facing context in release notes and
+larger planning context in `goals/`. If standalone ADR files or OpenSpec change
+records are restored or added, link them from this page and keep the decision
+status current.
+
+## ADR Criteria
+
+Create or update an ADR when a change:
+
+- Adds, removes, or reorganizes visible MCP tools, resources, prompts, or
+  operation ids.
+- Changes live bridge trust boundaries or filesystem behavior.
+- Changes provider routing semantics.
+- Changes generated docs/reference ownership.
+- Introduces a new compatibility promise or deprecates an existing one.
+
+## Suggested ADR Shape
+
+1. Context
+2. Decision
+3. Consequences
+4. Alternatives considered
+5. Validation and rollback notes
+
+## Related Docs
+
+- [Architecture](/docs/architecture)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Release Notes](/docs/release-notes)

@@ -1,0 +1,22 @@
+# Facts
+
+- v0.1.0 requires a bundled or repo-owned live FL Studio bridge path; a mock-only server with an external bridge placeholder is not enough.
+- The live bridge uses the same typed domain, operation, payload, result, task, and error contracts as mock mode.
+- At least one live or live-harness smoke path proves the bridge can execute read and mutation operations without bypassing the MCP server contracts.
+- Every FL Studio surface that can be backed by current repo code, official FL Studio/API evidence, bridge capabilities, or bundle/provider assets is mapped into the MCP surface or explicitly recorded as intentionally unmapped.
+- The public MCP surface contains no speculative, duplicate, alias-only, or unsupported tools; every public tool is justified by an evidence-backed FL Studio operation or core governance need.
+- All public tool inputs, task records, resources, and bridge payloads are represented by strongly typed Pydantic v2 contracts or generated schemas.
+- Read pathways remain resources-first: runtime, capability, provider, project, render job, and audio analysis state are exposed through resources or resource templates, with read-only tools accurately annotated.
+- All useful long-running operations, including render/export, audio analysis, and any bridge operation that may take seconds or minutes, support native FastMCP task execution with async task-enabled handlers.
+- Async task behavior supports creation, polling, result retrieval, cancellation, progress or status reporting, terminal states, and graceful inline execution when task execution is not requested or unavailable.
+- Repo-owned render and audio task resources stay aligned with native FastMCP task IDs, statuses, results, artifacts, and cancellation behavior.
+- The v0.1.0 surface includes a research-backed agentic discovery pattern for a large tool catalog, such as capability resources, search, domain profiles, transforms, or another documented approach that keeps agents from loading or guessing hundreds of tools blindly.
+- Tool names, descriptions, schemas, annotations, tags, safety hints, idempotency hints, and open-world hints help agents choose safe operations without trial and error.
+- The server implementation is aligned with current FastMCP v3 documentation for server construction, strict input validation, resources and templates, structured tool outputs, auth, transports, testing, and background tasks.
+- The public surface is aligned with the latest MCP specification and guidance for tools, resources, annotations, structured content, task-augmented execution, progress, cancellation, security, and large-tool-catalog ergonomics.
+- Auth, transport, bridge command targeting, secret handling, input validation, output sanitization, timeout, and destructive-operation safeguards follow MCP and agentic tool-use best practices.
+- Mock mode is deterministic for every mapped operation and mirrors the live bridge response schema closely enough for contract, agent, and CI validation.
+- v0.1.0 is publish-ready: package metadata, versioning, build artifacts, release workflows, docs, client setup, checksums or provenance, and public API inventories are ready for distribution.
+- Done requires passing public roster contracts, schema/reference drift checks, FastMCP smoke tests, async task smoke tests, mock coverage, bridge failure-mode checks, auth and transport checks, docs checks, and BUILD_STATUS.md ledger updates.
+- All public API, file structure, agent-facing behavior, skill-facing behavior, and release-scope changes are reflected in docs, generated inventories, ADRs or release notes, and the task ledger.
+- After public API, file structure, agent definition, or skill definition changes, the docs steward workflow is invoked if available, and any unavailability is documented.

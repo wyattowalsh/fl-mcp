@@ -1,8 +1,12 @@
+import pytest
+
 import fl_mcp.server.app as app_module
 from fl_mcp.config import RuntimeConfig
 
 
-def test_server_app_create_server_delegates_to_factory(monkeypatch) -> None:
+def test_server_app_create_server_delegates_to_factory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     captured: dict[str, object] = {}
     sentinel = object()
 

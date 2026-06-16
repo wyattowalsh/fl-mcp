@@ -7,6 +7,15 @@ from pathlib import Path
 from typing import Protocol
 
 from fl_mcp.schemas import (
+    PluginCalibration,
+    PluginControl,
+    PluginInventoryItem,
+    PluginPresetAsset,
+    PluginProfile,
+    PluginRawParameter,
+    PluginSupportMatrixRow,
+    PluginValueMap,
+    PluginWrapperFingerprint,
     ProviderManifest,
     Snapshot,
     TransactionEnvelope,
@@ -20,6 +29,15 @@ class JsonSchemaModel(Protocol):
 
 
 MODEL_REGISTRY = {
+    "plugin-calibration": PluginCalibration,
+    "plugin-control": PluginControl,
+    "plugin-inventory-item": PluginInventoryItem,
+    "plugin-preset-asset": PluginPresetAsset,
+    "plugin-profile": PluginProfile,
+    "plugin-raw-parameter": PluginRawParameter,
+    "plugin-support-matrix-row": PluginSupportMatrixRow,
+    "plugin-value-map": PluginValueMap,
+    "plugin-wrapper-fingerprint": PluginWrapperFingerprint,
     "provider-manifest": ProviderManifest,
     "snapshot": Snapshot,
     "transaction-envelope": TransactionEnvelope,

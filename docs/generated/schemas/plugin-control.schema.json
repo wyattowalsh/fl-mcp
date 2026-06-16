@@ -1,0 +1,204 @@
+{
+  "$defs": {
+    "PluginValueMap": {
+      "description": "Mapping from semantic plain values to FL's normalized plugin values.",
+      "properties": {
+        "default_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default Value"
+        },
+        "enum_values": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Enum Values",
+          "type": "array"
+        },
+        "expression": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expression"
+        },
+        "kind": {
+          "default": "normalized",
+          "enum": [
+            "normalized",
+            "linear",
+            "log_frequency",
+            "db",
+            "enum",
+            "percent",
+            "bipolar",
+            "milliseconds",
+            "tempo_synced",
+            "note_pitch",
+            "custom"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "max_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max Value"
+        },
+        "min_value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min Value"
+        }
+      },
+      "title": "PluginValueMap",
+      "type": "object"
+    }
+  },
+  "description": "A semantic plugin control that may resolve to a local FL parameter index.",
+  "properties": {
+    "control_id": {
+      "minLength": 1,
+      "title": "Control Id",
+      "type": "string"
+    },
+    "control_origin": {
+      "default": "curated_semantic",
+      "enum": [
+        "live_raw",
+        "curated_semantic",
+        "vendor_seed",
+        "generated_stub",
+        "preset_asset"
+      ],
+      "title": "Control Origin",
+      "type": "string"
+    },
+    "group": {
+      "default": "main",
+      "title": "Group",
+      "type": "string"
+    },
+    "label": {
+      "minLength": 1,
+      "title": "Label",
+      "type": "string"
+    },
+    "midi_cc": {
+      "anyOf": [
+        {
+          "maximum": 127,
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Midi Cc"
+    },
+    "parameter_index": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Index"
+    },
+    "parameter_name_hint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Name Hint"
+    },
+    "readback": {
+      "default": true,
+      "title": "Readback",
+      "type": "boolean"
+    },
+    "requires_midi": {
+      "default": false,
+      "title": "Requires Midi",
+      "type": "boolean"
+    },
+    "requires_window": {
+      "default": false,
+      "title": "Requires Window",
+      "type": "boolean"
+    },
+    "risk": {
+      "default": "safe",
+      "enum": [
+        "read",
+        "safe",
+        "creative",
+        "destructive",
+        "volatile"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "unit": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unit"
+    },
+    "value_map": {
+      "$ref": "#/$defs/PluginValueMap"
+    }
+  },
+  "required": [
+    "control_id",
+    "label"
+  ],
+  "title": "PluginControl",
+  "type": "object"
+}

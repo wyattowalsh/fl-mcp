@@ -15,7 +15,9 @@ if (generate.status !== 0) {
   process.exit(generate.status ?? 1);
 }
 
-const child = spawn('pnpm', ['exec', 'next', 'dev', ...process.argv.slice(2)], {
+const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next';
+
+const child = spawn(nextBin, ['dev', ...process.argv.slice(2)], {
   cwd: docsRoot,
   stdio: 'inherit'
 });

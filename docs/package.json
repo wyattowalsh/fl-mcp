@@ -7,7 +7,7 @@
     "dev": "node ./scripts/dev.mjs",
     "build": "node ./scripts/build.mjs",
     "start": "next start",
-    "lint": "pnpm exec tsc --noEmit",
+    "lint": "fumadocs-mdx && tsc --noEmit --incremental false",
     "check": "node ./scripts/check.mjs",
     "docs:generate-reference": "node ./scripts/generate-reference.mjs",
     "docs:verify-reference": "node ./scripts/generate-reference.mjs --check"

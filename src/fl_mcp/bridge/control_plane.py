@@ -22,8 +22,12 @@ def ping() -> BridgeHealth:
 
     from fl_mcp.graph.domains import DOMAINS
 
+    status = "ok"
+    if DEFAULT_BRIDGE.mode == "live" and not DEFAULT_BRIDGE.live_command:
+        status = "degraded"
+
     return BridgeHealth(
-        status="ok",
+        status=status,
         transport="subprocess" if DEFAULT_BRIDGE.mode == "live" else "loopback",
         mode=DEFAULT_BRIDGE.mode,
         command_configured=bool(DEFAULT_BRIDGE.live_command),

@@ -1,0 +1,312 @@
+---
+title: Bridge Protocol
+description: JSON subprocess and file-queue contracts for the FL Studio live bridge.
+---
+
+The FL Studio bridge translates MCP domain operations into real FL Studio API
+calls without importing FL Studio-only modules in the server process. The MCP
+runtime still talks to a subprocess with one JSON request argument and one JSON
+response on stdout. For actual FL Studio app execution, that subprocess is
+`python -m fl_mcp.bridge.host_client`; it writes a typed request file for the
+bundled `device_FL_MCP_Bridge.py` MIDI script, then waits for the script to write
+the typed response file from inside the DAW Python host.
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `FL_MCP_BRIDGE_MODE` | No | `mock` | Set to `live` to enable subprocess execution |
+| `FL_MCP_FL_STUDIO_BRIDGE_CMD` | Yes (live) | — | Absolute path or command to the bridge executable |
+| `FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS` | No | `20.0` | Outer per-operation subprocess timeout in seconds |
+| `FL_MCP_FL_STUDIO_BRIDGE_DIR` | No | Installer-reported script-local `bridge/` directory | Private request/response directory shared by `host_client` and the FL Studio MIDI script |
+| `FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS` | No | `0.05` | MCP-side response-file polling interval used by `host_client` |
+| `FL_MCP_FL_STUDIO_BRIDGE_LOG` | No | unset | Set to `1`, `true`, `yes`, or `on` to enable persistent DAW-side diagnostic logging |
+
+## Invocation
+
+```bash
+$FL_MCP_FL_STUDIO_BRIDGE_CMD '<JSON-encoded request>'
+```
+
+The bridge command is parsed with `shlex.split()` and the JSON payload is appended
+as a single positional argument. `shell=True` is never used.
+
+## Packaged Host Bridge
+
+v0.1.0 includes a repo-owned actual-app bridge command:
+
+```bash
+python -m fl_mcp.bridge.host_client
+```
+
+`fl-mcp install --dry-run` prints command strings for the current Python
+environment, stable `uvx` command templates, the private bridge directory, and
+the package-resolved controller script source and target path. The bundled MIDI
+script defaults to a private `bridge/` directory next to the selected script, so
+the installer reports that same FL-writable path for
+`FL_MCP_FL_STUDIO_BRIDGE_DIR`. Prefer
+`uvx_environment` for MCP client configuration because it avoids depending on a
+specific uv cache interpreter path:
+
+```bash
+uvx --from fl-mcp python -m fl_mcp.bridge.host_client
+```
+
+For local-source testing, replace `fl-mcp` after `--from` with the absolute
+checkout path and add `--with-editable /absolute/path/to/fl-mcp`. Install
+`fl-bundle/controller/device_FL_MCP_Bridge.py` under the
+reported FL Studio `Settings/Hardware/FL MCP Bridge/` directory and select
+`FL MCP Bridge` in MIDI Settings. The script polls the bridge directory from
+`OnIdle`, dispatches the shipped `general_*` and safe `transport_*` live
+operations, and writes the response file consumed by `host_client`.
+
+The bundled script declares `# supportedDevices=FL MCP Bridge,IAC Driver Bus 1`
+so the local virtual IAC MIDI device used by the actual-app smoke path can list
+the bridge as a selectable controller type.
+
+On POSIX systems both sides reject symlink and non-directory bridge paths,
+require the directory to be owned by the current user, and enforce `0700`
+permissions. `FL_MCP_FL_STUDIO_BRIDGE_DIR` can override the location, but the
+same safety checks apply. If the variable is not available inside FL Studio,
+the MIDI script uses its script-local `bridge/` directory. Some FL Studio macOS
+hosts raise low-level `SystemError` from POSIX metadata calls even when normal
+file writes work. For that default script-local directory only, the MIDI script
+continues with the MCP-side `host_client` owning the private-directory check.
+Set `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` before launching FL Studio if you need a
+persistent `fl_mcp_bridge.log` for diagnostics. Explicit environment override
+directories remain strict and fail closed.
+
+The file-queue envelope written by `host_client` is:
+
+```json
+{
+  "request_id": "unique-string",
+  "request": {
+    "domain": "transport",
+    "operation": "get_state",
+    "payload": {},
+    "provider": "flapi-live",
+    "rollback_class": null
+  }
+}
+```
+
+The FL Studio script writes `response-{request_id}.json` containing the same
+`BridgeLiveResponse` schema described below. The MCP-side `host_client` writes
+request files atomically and removes request/response files after a successful
+roundtrip unless diagnostic code explicitly keeps them. The DAW-side script
+writes final response paths directly because the FL Studio embedded Python host
+can reject `rename`, `replace`, and `remove` even when direct file writes
+succeed. The DAW-side script marks handled request files in memory so it will not
+reprocess them while waiting for `host_client` to remove them.
+
+## Direct Runner And Harness
+
+The direct packaged runner remains available for CI and host diagnostics:
+
+For CI and repeatable local smoke tests, use the live-harness command:
+
+```bash
+python -m fl_mcp.bridge.runner --mode harness
+```
+
+Harness mode still goes through `FL_MCP_BRIDGE_MODE=live`, the subprocess boundary,
+the typed request/response schemas, and the public FL tool contracts. It does not
+modify real FL Studio state. Live mode defers FL Studio Python API imports until
+execution and currently supports smoke-safe FL version plus transport tempo
+operations when the runner is executed inside an FL Studio scripting host.
+Normal actual-app MCP use should prefer `fl_mcp.bridge.host_client` plus
+`device_FL_MCP_Bridge.py`.
+
+## Selected Controller Adapter
+
+Some FL Studio sessions may already have an existing `FL Studio MCP Controller`
+script selected. For that concrete local state, v0.1.0 also includes a
+repo-owned subprocess adapter:
+
+```bash
+python -m fl_mcp.bridge.selected_controller_client
+```
+
+The adapter still accepts the standard `BridgeLiveRequest` JSON and returns the
+standard `BridgeLiveResponse` JSON. It translates a narrow, smoke-safe operation
+set to the selected controller's `mcp_command.json` and `mcp_response.json`
+files. Supported operations are limited to actions already exposed by that
+controller: selected transport reads/writes, mixer track reads and reversible
+track updates, channel-rack reads and reversible channel/step-sequencer updates,
+and plugin validity/name/parameter/preset reads plus parameter and preset
+stepping. Pattern creation, playlist arrangement, piano-roll note writing,
+project save-as, and render are reported as unsupported until the DAW-side
+controller implements those actions. This is useful for actual-app diagnostics
+when the FL Studio MIDI settings UI cannot be automated, but the preferred
+install path remains `device_FL_MCP_Bridge.py`. Because the selected-controller
+protocol uses fixed filenames, the adapter serializes requests with a local lock
+file and returns `selected_controller_busy` when another request holds that lock
+until timeout. Multi-field canonical operations, such as `mixer.update_track`,
+are translated into ordered controller commands while the lock is held.
+
+## Request Schema
+
+```json
+{
+  "domain": "string",
+  "operation": "string",
+  "payload": {},
+  "provider": "string",
+  "rollback_class": "string | null"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `domain` | `string` | FL Studio domain (e.g. `"mixer"`, `"transport"`) |
+| `operation` | `string` | Operation name within the domain |
+| `payload` | `object` | Arbitrary key-value parameters for the operation |
+| `provider` | `string` | Resolved provider name (e.g. `"flapi-live"`) |
+| `rollback_class` | `string \| null` | Rollback class: `fully_transactional`, `checkpointed`, `best_effort`, `unsafe_raw`, or `null` |
+
+## Response Schema
+
+The bridge must write exactly one JSON object to stdout and exit with code `0`.
+Any non-zero exit code is treated as a bridge failure.
+
+```json
+{
+  "success": true,
+  "result": {},
+  "error_code": null,
+  "message": "string",
+  "execution_id": "string | null",
+  "provider": "string"
+}
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | `boolean` | **Required.** `true` for success, `false` for failure |
+| `result` | `object` | Operation result data (empty `{}` on failure) |
+| `error_code` | `string \| null` | Machine-readable error code on failure, `null` on success |
+| `message` | `string` | **Required.** Human-readable status or error description |
+| `execution_id` | `string \| null` | Optional unique identifier for this execution |
+| `provider` | `string \| null` | Provider that handled the request |
+
+## Error Codes
+
+| Code | Cause | Recovery |
+|---|---|---|
+| `unsupported_domain` | Domain not registered in `DOMAINS` | Check `fl_mcp.graph.domains.DOMAINS` |
+| `unsupported_operation` | Operation is not implemented by the selected bridge/provider | Use `runtime://capabilities`, switch provider, or add an implementation |
+| `bridge_process_error` | Subprocess failed to start or raised OSError | Check `FL_MCP_FL_STUDIO_BRIDGE_CMD` is valid |
+| `bridge_timeout` | Bridge process exceeded timeout | Increase `FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS` |
+| `bridge_nonzero_exit` | Bridge exited with non-zero return code | Check bridge stderr output |
+| `bridge_dir_insecure` | Host-file bridge directory failed ownership, symlink, or permission checks | Use the installer-reported private bridge dir or fix ownership/mode |
+| `invalid_response` | Bridge returned empty, non-JSON, or non-object output | Fix bridge serialization |
+| `invalid_request` | Packaged runner received invalid request JSON or schema | Check caller serialization |
+| `fl_api_unavailable` | Packaged runner live mode cannot import FL Studio API modules | Run from FL Studio's scripting host or use harness mode |
+| `selected_controller_busy` | Another selected-controller request held the compatibility lock until timeout | Retry after the in-flight request completes |
+| `mock_forced_failure` | Mock forced failure via `force_fail=true` payload | Test-only; remove `force_fail` from payload |
+
+## Bridge Modes
+
+### Mock (default)
+
+When `FL_MCP_BRIDGE_MODE=mock` (or unset), all operations are handled by the
+built-in deterministic mock in `src/fl_mcp/bridge/mock_generators.py`. No subprocess
+is invoked. Every response includes `"bridge_mode": "mock"` and
+`"mock_mode_warning": "This operation was simulated — no real FL Studio state was modified."`.
+
+### Live
+
+When `FL_MCP_BRIDGE_MODE=live`, fl-mcp invokes the bridge executable for every
+operation. If `FL_MCP_FL_STUDIO_BRIDGE_CMD` is empty or the process fails,
+the response has `success: false` and `error_code: "bridge_process_error"`.
+For actual-app execution, configure `FL_MCP_FL_STUDIO_BRIDGE_CMD` to
+`python -m fl_mcp.bridge.host_client` and ensure the bundled FL Studio MIDI
+script is installed and selected. If the MIDI script is not polling the shared
+directory, the host client reports `fl_host_timeout`. Keep the outer bridge
+timeout higher than the host-file or selected-controller client timeout so the
+inner client can return its structured failure instead of being killed by the
+parent process.
+
+### Live Harness
+
+The packaged harness command is the default repeatable validation path:
+
+```bash
+FL_MCP_BRIDGE_MODE=live \
+FL_MCP_FL_STUDIO_BRIDGE_CMD="python -m fl_mcp.bridge.runner --mode harness" \
+uv run pytest tests/unit/test_bridge_execution.py tests/unit/test_fl_surface_task_tools.py
+```
+
+This covers one read operation (`transport.get_state`) and one mutation operation
+(`transport.set_tempo`) through `FLStudioBridge(mode="live")` and the public FL
+tool handlers.
+
+## Provider Routing
+
+The `provider` field in the request is resolved by `_resolve_provider()`:
+
+1. If the request payload contains an explicit `provider` field, it is used (after alias resolution).
+2. If `mode=mock`, provider is always `"mock"`.
+3. If `mode=live`, every `provider="auto"` operation resolves to `"flapi-live"`.
+
+In live mode, an explicit `provider="mock"` still executes the deterministic
+mock backend. This keeps task entrypoints and deliberate mock calls usable while
+FL Studio is connected.
+
+The compact production surface therefore attempts `flapi-live` for every
+catalog operation in live mode and never reports successful mock execution
+unless the caller explicitly requested `provider="mock"`. The bundled
+`device_FL_MCP_Bridge.py` script records candidate modules/functions for every
+operation and returns structured `api_missing`, `unsupported_host_behavior`,
+`path_unavailable`, or `host_exception` failures when FL Studio cannot execute
+the call.
+
+The selected-controller compatibility protocol remains available as a reference
+and fallback path for observed transport, mixer, channel, and plugin mappings,
+but the bundled host-file bridge is the canonical live target.
+
+The selected-controller compatibility script exposes tempo through FL's
+`mixer.getCurrentTempo` / `mixer.setCurrentTempo` functions, which use a 1000x
+integer-like scale in the observed FL Studio host. The bridge normalizes that to
+normal BPM values for `transport.get_tempo` and scales BPM inputs back for
+`transport.set_tempo`.
+
+## Writing a Custom Subprocess Bridge
+
+A custom subprocess bridge can replace `host_client` if it implements the same
+stdout contract. A minimal bridge must:
+
+1. Read the JSON argument from `sys.argv[1]`
+2. Extract `domain`, `operation`, `payload`
+3. Dispatch to the appropriate FL Studio API call
+4. Write a valid response JSON to stdout
+5. Exit with code `0`
+
+```python
+#!/usr/bin/env python3
+"""Minimal FL Studio bridge skeleton."""
+import json
+import sys
+
+
+def handle(domain: str, operation: str, payload: dict) -> dict:
+    # Implement dispatch here
+    return {"success": False, "error_code": "not_implemented", "message": f"{domain}.{operation}"}
+
+
+if __name__ == "__main__":
+    req = json.loads(sys.argv[1])
+    result = handle(req["domain"], req["operation"], req.get("payload", {}))
+    # Ensure required fields are present
+    result.setdefault("domain", req["domain"])
+    result.setdefault("operation", req["operation"])
+    result.setdefault("provider", req.get("provider", "custom"))
+    result.setdefault("result", {})
+    result.setdefault("error_code", None)
+    result.setdefault("message", "")
+    result.setdefault("execution_id", None)
+    print(json.dumps(result))
+```
+
+See `src/fl_mcp/bridge/fl_studio.py` for the full client-side implementation.

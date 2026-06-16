@@ -5,22 +5,48 @@ description: Configure FL MCP for Claude Code.
 
 ## Prerequisites
 
-- Local FL MCP runtime is installed and reachable.
+- `uv` is installed.
 - Claude Code is configured to load local MCP server config files.
+- Live FL Studio mode is optional; mock mode works without FL Studio.
 
 ## Configuration
 
-1. Point Claude Code to the FL MCP server configuration.
-2. Ensure provider/auth settings are available in the active environment.
-3. Reload client configuration if required.
+Use FL MCP as a stdio server.
+
+Published package:
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+Local checkout:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+For live FL Studio mode, run `fl-mcp install --dry-run` and copy the matching
+`uvx_environment` values into the Claude Code MCP server environment. Use
+`uvx_harness_environment` when validating the live subprocess boundary without
+FL Studio.
 
 ## Verification
 
-- Claude Code lists the expected FL MCP tools/resources.
-- A representative read + write flow succeeds.
+- Claude Code lists exactly 12 FL MCP tools.
+- `fl_status` reports `status="ok"` and `internal_operation_count=216`.
+- `fl_search_capabilities` and `fl_get_capability_schema` resolve a target
+  operation.
+- A representative `fl_execute` mock call succeeds before enabling live mode.
 
 ## Related Docs
 
 - [Client Setup](/docs/clients)
 - [Getting Started](/docs/getting-started)
+- [Operation Workflows](/docs/operation-workflows)
 - [Troubleshooting](/docs/troubleshooting)

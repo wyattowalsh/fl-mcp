@@ -3,7 +3,20 @@ title: Reuse Audit
 description: Reuse and attribution audit for incorporated materials and patterns.
 ---
 
-Use this audit to record third-party material, patterns, or code that influence architecture and implementation.
+Use this audit to record third-party material, patterns, or code that influence
+FL MCP architecture and implementation. Keep references explicit so future
+agents can distinguish source-grounded reuse from general design inspiration.
+
+## Audit Policy
+
+- Record code, schema, docs language, architecture patterns, algorithms, and
+  workflow patterns that materially influence implementation.
+- Do not copy code or docs text from an external project unless the license and
+  attribution obligations are verified first.
+- Treat external MCP/DAW projects as design references unless this audit records
+  a stronger reuse decision.
+- Keep the public API inventory and release notes aligned when reuse changes the
+  public surface.
 
 ## Audit Record Template
 
@@ -45,4 +58,20 @@ Use this audit to record third-party material, patterns, or code that influence 
 
 ## Current Entries
 
-_No entries recorded yet. Add one section per source reused._
+### DAW MCP Workflow Patterns
+
+- **Source:** Community DAW MCP servers and prior FL MCP planning notes.
+- **Reuse type:** Architecture and workflow pattern reference only.
+- **Scope:** Capability search, schema lookup, browser-style asset workflows,
+  arrangement workflows, and compact agent-facing tool design.
+- **Code copied:** None recorded in this audit.
+- **Docs copied:** None recorded in this audit.
+- **Decision:** Accept with constraints.
+- **Constraints:** Any future code or text reuse must add a source-specific
+  audit entry with license verification before merge.
+
+## Related Docs
+
+- [Architecture](/docs/architecture)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Operation Workflows](/docs/operation-workflows)

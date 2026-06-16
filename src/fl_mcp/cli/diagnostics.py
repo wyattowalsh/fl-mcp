@@ -17,6 +17,7 @@ from fl_mcp.interfaces.status import (
 def build_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``diagnostics`` subcommand and its sub-subcommands."""
     diagnostics_parser = subparsers.add_parser(
         "diagnostics", help="Status and diagnostics shell integrations"
     )
@@ -37,6 +38,7 @@ def build_parser(
 
 
 def handle_diagnostics_shell(args: argparse.Namespace) -> int:
+    """Emit a JSON diagnostics payload for the helper app or shell integration."""
     endpoint = HELPER_STATUS_ENDPOINT if args.endpoint == "status" else HELPER_DIAGNOSTICS_ENDPOINT
 
     payload = HelperStatusPayload(

@@ -23,18 +23,22 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
         suite: [unit, integration, contract, benchmarks]
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev --frozen
+        run: uv sync --all-extras --dev --locked
       - name: Verify required test suite directory
         run: test -d tests/${{ matrix.suite }}
         shell: bash
       - name: Run test suite
         run: uv run pytest -q tests/${{ matrix.suite }}
+        shell: bash
+      - name: Run test suite with coverage
+        if: matrix.suite != 'benchmarks'
+        run: uv run pytest --cov=fl_mcp --cov-report=term-missing --ignore=tests/benchmarks tests/${{ matrix.suite }}
         shell: bash
 
   docs:
@@ -42,31 +46,92 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
         with:
           node-version: '20'
-      - uses: pnpm/action-setup@9fd676a19091d4595eefd76e4bd31c97133911f1 # v4.2.0
+      - uses: pnpm/action-setup@0e279bb959325dab635dd2c09392533439d90093  # v6.0.8
         with:
           version: '9.15.4'
+      - name: Sync Python dependencies for docs reference generation
+        run: uv sync --all-extras --dev --locked
       - name: Install docs dependencies
-        run: pnpm --dir docs install --frozen-lockfile
+        run: pnpm --dir docs --ignore-workspace install --frozen-lockfile
+      - name: Verify generated docs references
+        run: pnpm --dir docs --ignore-workspace docs:verify-reference
+      - name: Lint docs package
+        run: pnpm --dir docs --ignore-workspace lint
       - name: Verify docs references and content
-        run: pnpm --dir docs check
+        run: pnpm --dir docs --ignore-workspace check
       - name: Build docs
-        run: pnpm --dir docs build
+        run: pnpm --dir docs --ignore-workspace build
 
   quality:
     name: Quality and security checks
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
         with:
           python-version: '3.12'
       - name: Sync dependencies
-        run: uv sync --all-extras --dev --frozen
-      - name: Quality script
-        run: ./scripts/quality.sh
+        run: uv sync --all-extras --dev --locked
+      - name: Verify lockfile
+        run: uv lock --check
+      - name: Validate pre-commit config
+        run: uv run pre-commit validate-config
+      - name: Run pre-commit hooks
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+      - name: Run vulnerability audit
+        run: uv run --with pip-audit==2.10.0 pip-audit
+
+  typecheck:
+    name: Type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev --locked
+      - name: Run ty
+        run: uv run ty check --output-format github src/
+
+  package:
+    name: Package build and install smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev --locked
+      - name: Build distributions
+        run: uv build
+      - name: Validate distributions
+        run: uv run --with twine==6.2.0 twine check dist/*
+      - name: Smoke wheel with uvx
+        run: |
+          wheel="$(python - <<'PY'
+          from pathlib import Path
+
+          wheels = sorted(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"Expected one wheel, found {len(wheels)}.")
+          print(wheels[0])
+          PY
+          )"
+          uvx --from "${wheel}" fl-mcp --version
+          uvx --from "${wheel}" fl-mcp server run --mode stdio --dry-run

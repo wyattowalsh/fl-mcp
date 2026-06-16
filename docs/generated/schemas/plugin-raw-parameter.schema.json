@@ -1,0 +1,107 @@
+{
+  "description": "One FL-exposed automatable plugin parameter discovered through live probing.",
+  "properties": {
+    "control_origin": {
+      "default": "live_raw",
+      "enum": [
+        "live_raw",
+        "curated_semantic",
+        "vendor_seed",
+        "generated_stub",
+        "preset_asset"
+      ],
+      "title": "Control Origin",
+      "type": "string"
+    },
+    "normalized_value": {
+      "anyOf": [
+        {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Normalized Value"
+    },
+    "parameter_index": {
+      "minimum": 0,
+      "title": "Parameter Index",
+      "type": "integer"
+    },
+    "parameter_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Name"
+    },
+    "readable": {
+      "default": true,
+      "title": "Readable",
+      "type": "boolean"
+    },
+    "risk": {
+      "default": "safe",
+      "enum": [
+        "read",
+        "safe",
+        "creative",
+        "destructive",
+        "volatile"
+      ],
+      "title": "Risk",
+      "type": "string"
+    },
+    "value_string": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Value String"
+    },
+    "writable": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Writable"
+    },
+    "write_probe_status": {
+      "default": "not_run",
+      "enum": [
+        "not_run",
+        "skipped",
+        "read_only",
+        "writable",
+        "failed",
+        "restored"
+      ],
+      "title": "Write Probe Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "parameter_index"
+  ],
+  "title": "PluginRawParameter",
+  "type": "object"
+}

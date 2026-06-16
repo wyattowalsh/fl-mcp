@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fl_mcp.config import RuntimeConfig, StreamableHTTPConfig
 from fl_mcp.server.factory import create_server
@@ -11,12 +10,14 @@ from fl_mcp.server.factory import create_server
 LOGGER = logging.getLogger(__name__)
 
 
-def _run_streamable_http(server: Any, config: StreamableHTTPConfig) -> None:
-    if hasattr(server, "run_streamable_http"):
-        server.run_streamable_http(host=config.host, port=config.port, path=config.path)
+def _run_streamable_http(server: object, config: StreamableHTTPConfig) -> None:
+    run_streamable_http = getattr(server, "run_streamable_http", None)
+    if callable(run_streamable_http):
+        run_streamable_http(host=config.host, port=config.port, path=config.path)
         return
-    if hasattr(server, "run"):
-        server.run(
+    run = getattr(server, "run", None)
+    if callable(run):
+        run(
             transport="streamable-http",
             host=config.host,
             port=config.port,

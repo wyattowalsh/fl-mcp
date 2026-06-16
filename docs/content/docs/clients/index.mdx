@@ -3,12 +3,55 @@ title: Client Setup
 description: Configure supported AI clients.
 ---
 
-Use the same setup skeleton for every client page:
+All supported clients should run FL MCP as a stdio MCP server. The default mode
+is deterministic mock mode; add live bridge environment variables only when the
+client should control a running FL Studio session.
+
+## Published Package
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+## Local Checkout
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+## Live FL Studio Environment
+
+Run `fl-mcp install --dry-run` and use the matching `uvx_*_environment` block:
+
+- `uvx_environment` for the bundled `FL MCP Bridge` MIDI script.
+- `uvx_harness_environment` for deterministic live-boundary smoke tests without
+  FL Studio.
+- `uvx_selected_controller_environment` when an existing `FL Studio MCP
+  Controller` script is already selected in FL Studio.
+
+## Client Checklist
 
 1. Confirm prerequisites.
 2. Apply client-specific configuration.
-3. Run discovery and representative tool checks.
-4. Validate behavior and capture troubleshooting notes.
+3. Run discovery and confirm exactly 12 visible tools.
+4. Call `fl_status`, then search capabilities and fetch one schema.
+5. Execute a safe mock operation through `fl_execute`.
+6. Validate behavior and capture troubleshooting notes.
+
+## After Configuration
+
+- Use [Operation Workflows](/docs/operation-workflows) for safe execution
+  recipes.
+- Use [Validation Runbook](/docs/validation-runbook) for command groups and
+  evidence expectations.
+- Use [Live FL Studio Smoke](/docs/live-fl-studio-smoke) before claiming
+  actual-app live mode works.
 
 ## Supported Clients
 

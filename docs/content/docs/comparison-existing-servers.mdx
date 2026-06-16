@@ -1,6 +1,47 @@
 ---
 title: Comparison with Existing FL Studio MCP Servers
-description: Positioning relative to current ecosystem servers.
+description: Positioning FL MCP against raw-tool and script-only DAW MCP patterns.
 ---
 
-Compare capabilities, interoperability, reliability, and maintenance posture against existing community servers.
+FL MCP is built around a compact, schema-first FastMCP surface. The main
+difference from many DAW MCP experiments is not the presence of FL Studio
+operations; it is how those operations are exposed, validated, routed, and
+verified.
+
+## Comparison Matrix
+
+| Area | FL MCP approach | Common raw-tool approach |
+| --- | --- | --- |
+| Visible tools | 12 compact tools | One visible tool per DAW action |
+| Operation depth | 216 internal operations across 16 domains | Often limited to the first scripted surface |
+| Discovery | Capability search plus exact schema lookup | Tool names and descriptions only |
+| Safety | Provider metadata, readback guidance, transactions, rollback classes | Caller convention or ad hoc warnings |
+| Mock mode | Full deterministic catalog for CI and agent rehearsal | Often no complete mock path |
+| Live mode | Packaged host bridge with private file queue and typed responses | Direct script calls or manual local server |
+| Docs | Public inventory, bridge protocol, generated references | README-only or code comments |
+
+## What FL MCP Borrows
+
+Good DAW MCP designs usually provide practical musical workflows rather than
+only low-level functions. FL MCP keeps that lesson by providing prompts and a
+browser workflow around instruments, effects, samples, presets, arrangement,
+automation, rendering, and analysis.
+
+## What FL MCP Avoids
+
+FL MCP does not expose every operation as a visible MCP tool. A large visible
+tool list makes discovery harder for agents and increases the chance that a
+model calls an operation without fetching its exact schema or safety metadata.
+
+## Interoperability
+
+FL MCP uses standard MCP/FastMCP primitives: tools, resources, resource
+templates, prompts, structured schemas, and task-style render/analysis entries.
+Clients should not depend on the legacy primitive tool names. They should depend
+on canonical operation ids and the compact executor surface.
+
+## Related Docs
+
+- [Concepts](/docs/concepts)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [AI Workflows & Agent Teams](/docs/ai-workflows-agent-teams)

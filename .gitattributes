@@ -1,1 +1,24 @@
-* text=auto eol=lf
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Python
+*.py text diff=python
+*.pyi text diff=python
+
+# Data
+*.json text
+*.yaml text
+*.yml text
+*.toml text
+*.md text
+*.mdx text
+
+# Binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.whl binary
+*.tar.gz binary
+
+# Lock files
+uv.lock text -diff

@@ -1,10 +1,49 @@
 ---
 title: API & Schema Reference
-description: Canonical generated indexes for schemas and exported APIs.
+description: Canonical generated indexes for schemas and compact MCP surface contracts.
 ---
 
-The generated pages below are refreshed by `pnpm docs:generate-reference`.
+The generated pages below are refreshed by
+`pnpm --dir docs --ignore-workspace docs:generate-reference`.
+
+Use this page as the reference entrypoint when changing request models, compact
+surface output models, generated docs, or client-facing examples.
+
+Plugin-profile schemas are generated alongside provider, snapshot, and
+transaction schemas. They cover profile seeds, semantic controls, value maps,
+local inventory items, preset assets, and learned calibration overlays.
 
 - [Schema Inventory](/docs/reference/generated/schema-inventory)
 - [Public API Inventory (Canonical Contract)](/docs/architecture/public-api-inventory)
-- [Generated API Module Inventory](/docs/reference/generated/api-inventory)
+- [Generated Compact Surface Inventory](/docs/reference/generated/api-inventory)
+
+## Reader Paths
+
+| Need | Start Here | Then Verify |
+| --- | --- | --- |
+| Confirm visible MCP tools | [Public API Inventory](/docs/architecture/public-api-inventory) | `uv run python -m pytest tests/contract/test_public_surface.py -q` |
+| Inspect generated Pydantic schemas | [Schema Inventory](/docs/reference/generated/schema-inventory) | `pnpm --dir docs --ignore-workspace docs:verify-reference` |
+| Review generated compact surface data | [Generated Compact Surface Inventory](/docs/reference/generated/api-inventory) | `pnpm --dir docs --ignore-workspace check` |
+| Learn execution patterns | [Operation Workflows](/docs/operation-workflows) | `fl_get_capability_schema` before `fl_execute` |
+
+## Ownership
+
+`docs/scripts/generate-reference.mjs` writes the generated MDX files. Do not edit
+files under `docs/content/docs/reference/generated/` by hand.
+
+The public API inventory is hand-maintained because it explains the supported
+contract, migration guidance, and governance rules. Keep it aligned with tests,
+FastMCP inspection, and generated schemas whenever tool names, resource URIs,
+prompt names, operation ids, provider metadata, or output models change.
+
+Run this check before claiming reference docs are current:
+
+```bash
+pnpm --dir docs --ignore-workspace docs:verify-reference
+```
+
+## Related Docs
+
+- [Concepts](/docs/concepts)
+- [Validation Runbook](/docs/validation-runbook)
+- [Release Notes](/docs/release-notes)

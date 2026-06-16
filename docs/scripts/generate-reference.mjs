@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
@@ -7,7 +8,6 @@ const docsRoot = path.resolve(scriptDir, '..');
 const repoRoot = path.resolve(docsRoot, '..');
 const generatedDir = path.join(docsRoot, 'content', 'docs', 'reference', 'generated');
 const schemaDir = path.join(repoRoot, 'docs', 'generated', 'schemas');
-const sourceModulesDir = path.join(repoRoot, 'src', 'fl_mcp');
 const verifyOnly = process.argv.includes('--check');
 
 async function walk(dir, predicate, acc = []) {
@@ -71,7 +71,7 @@ async function writeMdx(fileName, title, description, lines, emptyState) {
 
   if (existing !== content) {
     throw new Error(
-      `Generated file out of date: ${path.relative(repoRoot, outputPath)}. Run \`pnpm --dir docs docs:generate-reference\`.`,
+      `Generated file out of date: ${path.relative(repoRoot, outputPath)}. Run \`pnpm --dir docs --ignore-workspace docs:generate-reference\`.`,
     );
   }
 }
@@ -93,19 +93,120 @@ async function generateSchemaInventory() {
 }
 
 async function generateApiInventory() {
-  const pythonFiles = await walk(sourceModulesDir, (filePath) => filePath.endsWith('.py'));
-
-  const lines = pythonFiles
-    .sort()
-    .map((filePath) => `- \`${path.relative(repoRoot, filePath)}\``);
+  const inventory = loadApiInventory();
+  const lines = [
+    '## Summary',
+    '',
+    `- Visible FastMCP tools: ${inventory.visible_tool_count}`,
+    `- Internal FL operations: ${inventory.operation_count}`,
+    `- FL domains: ${inventory.domain_count}`,
+    `- Resources: ${inventory.resource_uris.length}`,
+    `- Resource templates: ${inventory.resource_template_uris.length}`,
+    `- Prompts: ${inventory.prompt_names.length}`,
+    `- Providers: ${inventory.provider_names.length}`,
+    `- Verified \`flapi-live\` operations: ${inventory.live_available_operation_count}`,
+    `- Forced-live domains: ${inventory.forced_live_domains.length}`,
+    '',
+    '## Visible Tools',
+    '',
+    ...inventory.tool_names.map((name) => `- \`${name}\``),
+    '',
+    '## Resources',
+    '',
+    ...inventory.resource_uris.map((uri) => `- \`${uri}\``),
+    '',
+    '## Resource Templates',
+    '',
+    ...inventory.resource_template_uris.map((uri) => `- \`${uri}\``),
+    '',
+    '## Prompts',
+    '',
+    ...inventory.prompt_names.map((name) => `- \`${name}\``),
+    '',
+    '## Providers',
+    '',
+    ...inventory.provider_names.map((name) => `- \`${name}\``),
+    '',
+    '## Internal Operation Domains',
+    '',
+    '| Domain | Operations |',
+    '| --- | ---: |',
+    ...inventory.domain_counts.map((entry) => `| \`${entry.domain}\` | ${entry.count} |`),
+    '',
+    '## Forced-Live Contract',
+    '',
+    '- In live mode, `provider="auto"` resolves to `flapi-live` for every catalog operation.',
+    '- Verified operations are reported as `available`; forced-live attempts are reported as `attemptable`.',
+    '- Live execution reports success only after the DAW bridge confirms the call.',
+    '- Unsupported host behavior returns structured live errors instead of mock fallback.',
+  ];
 
   await writeMdx(
     'api-inventory.mdx',
     'Generated API Inventory',
-    'Auto-generated module index from src/fl_mcp.',
+    'Auto-generated compact MCP public surface and internal catalog inventory.',
     lines,
-    '_No Python modules found under `src/fl_mcp`._',
+    '_No compact MCP inventory could be generated._',
   );
+}
+
+function loadApiInventory() {
+  const script = String.raw`
+import json
+from collections import Counter
+
+from fl_mcp.bridge.live_surface import (
+    FORCED_LIVE_FLAPI_SUPPORTED_DOMAINS,
+    LIVE_FLAPI_OPERATIONS,
+)
+from fl_mcp.prompts.registry import prompt_names
+from fl_mcp.server import factory
+from fl_mcp.tools import compact
+from fl_mcp.tools.fl_surface import FL_TOOL_SPECS, PROVIDER_MATRIX
+
+domain_counts = Counter(spec.domain for spec in FL_TOOL_SPECS)
+resource_uris = [
+    factory.RUNTIME_HEALTH_RESOURCE_URI,
+    factory.RUNTIME_CAPABILITIES_RESOURCE_URI,
+    factory.PROVIDER_MATRIX_RESOURCE_URI,
+    factory.PROJECT_SNAPSHOT_RESOURCE_URI,
+    factory.PROJECT_ARRANGEMENT_RESOURCE_URI,
+]
+resource_template_uris = [
+    factory.DOMAIN_CAPABILITIES_TEMPLATE_URI,
+    factory.RENDER_JOB_TEMPLATE_URI,
+    factory.AUDIO_ANALYSIS_TEMPLATE_URI,
+]
+
+print(json.dumps({
+    "tool_names": list(compact.COMPACT_TOOL_NAMES),
+    "visible_tool_count": len(compact.COMPACT_TOOL_NAMES),
+    "operation_count": len(FL_TOOL_SPECS),
+    "domain_count": len(domain_counts),
+    "domain_counts": [
+        {"domain": domain, "count": count}
+        for domain, count in sorted(domain_counts.items())
+    ],
+    "resource_uris": resource_uris,
+    "resource_template_uris": resource_template_uris,
+    "prompt_names": list(prompt_names()),
+    "provider_names": sorted(PROVIDER_MATRIX),
+    "live_available_operation_count": sum(len(ops) for ops in LIVE_FLAPI_OPERATIONS.values()),
+    "forced_live_domains": list(FORCED_LIVE_FLAPI_SUPPORTED_DOMAINS),
+}, sort_keys=True))
+`;
+  const result = spawnSync('uv', ['run', 'python', '-c', script], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0) {
+    const stderr = result.stderr?.trim();
+    throw new Error(
+      `Failed to generate compact API inventory${stderr ? `:\n${stderr}` : '.'}`,
+    );
+  }
+  return JSON.parse(result.stdout);
 }
 
 await fs.mkdir(generatedDir, { recursive: true });

@@ -1,0 +1,103 @@
+{
+  "description": "Machine-local learned mapping from semantic controls to FL parameter indices.",
+  "properties": {
+    "bridge_mode": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Bridge Mode"
+    },
+    "fingerprint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fingerprint"
+    },
+    "fl_reported_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fl Reported Name"
+    },
+    "format": {
+      "default": "unknown",
+      "enum": [
+        "au",
+        "vst",
+        "vst3",
+        "clap",
+        "fst",
+        "fxp",
+        "fxb",
+        "unknown"
+      ],
+      "title": "Format",
+      "type": "string"
+    },
+    "mapped_controls": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Mapped Controls",
+      "type": "object"
+    },
+    "parameter_count": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parameter Count"
+    },
+    "profile_id": {
+      "minLength": 1,
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "source": {
+      "default": "local",
+      "title": "Source",
+      "type": "string"
+    },
+    "verified_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Verified At"
+    }
+  },
+  "required": [
+    "profile_id"
+  ],
+  "title": "PluginCalibration",
+  "type": "object"
+}

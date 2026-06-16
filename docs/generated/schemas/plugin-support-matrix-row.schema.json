@@ -1,0 +1,170 @@
+{
+  "description": "Priority support row used by plugin coverage audits and exported matrices.",
+  "properties": {
+    "detected_by": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Detected By",
+      "type": "array"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "failure_code": {
+      "anyOf": [
+        {
+          "enum": [
+            "plugin_not_installed",
+            "plugin_not_in_fl_database",
+            "format_ambiguous",
+            "profile_missing",
+            "profile_unverified",
+            "calibration_required",
+            "parameter_unmapped",
+            "parameter_count_mismatch",
+            "preset_unavailable",
+            "midi_routing_required",
+            "live_probe_failed",
+            "readback_mismatch"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Code"
+    },
+    "formats": {
+      "items": {
+        "enum": [
+          "au",
+          "vst",
+          "vst3",
+          "clap",
+          "fst",
+          "fxp",
+          "fxb",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Formats",
+      "type": "array"
+    },
+    "inventory_status": {
+      "enum": [
+        "installed",
+        "filesystem_only",
+        "fl_database_only",
+        "preset_only",
+        "not_installed",
+        "unknown"
+      ],
+      "title": "Inventory Status",
+      "type": "string"
+    },
+    "plugin_id": {
+      "minLength": 1,
+      "title": "Plugin Id",
+      "type": "string"
+    },
+    "priority": {
+      "enum": [
+        "P0_paid_installed",
+        "P1_paid_detected_or_suite",
+        "P2_popular_useful_stock_or_free",
+        "P3_inventory_only_on_demand",
+        "desired_not_installed"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "profile_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile Id"
+    },
+    "profile_status": {
+      "anyOf": [
+        {
+          "enum": [
+            "verified",
+            "partial",
+            "seed",
+            "stub",
+            "desired",
+            "unsupported"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile Status"
+    },
+    "raw_parameter_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Raw Parameter Count",
+      "type": "integer"
+    },
+    "remediation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Remediation"
+    },
+    "semantic_control_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Semantic Control Count",
+      "type": "integer"
+    },
+    "support_state": {
+      "enum": [
+        "inventory_stub",
+        "loadable",
+        "raw_enumerated",
+        "semantic_seed",
+        "calibrated",
+        "verified",
+        "desired",
+        "not_installed",
+        "unloadable",
+        "unprobeable",
+        "unsupported_host_behavior"
+      ],
+      "title": "Support State",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plugin_id",
+    "display_name",
+    "priority",
+    "support_state",
+    "inventory_status"
+  ],
+  "title": "PluginSupportMatrixRow",
+  "type": "object"
+}

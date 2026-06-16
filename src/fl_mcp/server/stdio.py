@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from fl_mcp.config import RuntimeConfig
 from fl_mcp.server.factory import create_server
@@ -11,12 +10,14 @@ from fl_mcp.server.factory import create_server
 LOGGER = logging.getLogger(__name__)
 
 
-def _run_stdio(server: Any) -> None:
-    if hasattr(server, "run_stdio"):
-        server.run_stdio()
+def _run_stdio(server: object) -> None:
+    run_stdio_method = getattr(server, "run_stdio", None)
+    if callable(run_stdio_method):
+        run_stdio_method()
         return
-    if hasattr(server, "run"):
-        server.run(transport="stdio")
+    run = getattr(server, "run", None)
+    if callable(run):
+        run(transport="stdio")
         return
     raise RuntimeError("FastMCP server does not expose stdio run methods.")
 

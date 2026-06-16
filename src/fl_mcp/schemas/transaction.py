@@ -13,6 +13,7 @@ class DomainChange(BaseModel):
     domain: str
     operation: str
     rollback_class: RollbackClass
+    provider: str | None = None
     payload: dict[str, object] = Field(default_factory=dict)
 
 
@@ -23,8 +24,12 @@ class TransactionEnvelope(BaseModel):
     request_id: str
     mode: Literal["preview", "apply"]
     execution_policy: Literal["all-or-nothing", "allow-partial"] = "all-or-nothing"
-    safety_mode: Literal["strict", "standard", "relaxed"] = "standard"
-    freshness_policy: Literal["strict", "allow-stale"] = "strict"
+    safety_mode: Literal["strict", "standard", "relaxed"] = Field(
+        default="standard", description="Reserved — accepted but not yet enforced."
+    )
+    freshness_policy: Literal["strict", "allow-stale"] = Field(
+        default="strict", description="Reserved — accepted but not yet enforced."
+    )
     target_snapshot_id: str | None = None
     changes: list[DomainChange]
     preconditions: list[str] = Field(default_factory=list)

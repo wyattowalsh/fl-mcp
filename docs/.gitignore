@@ -1,4 +1,5 @@
 .next
+.source
 out
 node_modules
 tsconfig.tsbuildinfo

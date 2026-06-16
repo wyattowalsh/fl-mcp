@@ -1,6 +1,13 @@
 {
   "description": "Provider registration model.",
   "properties": {
+    "aliases": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Aliases",
+      "type": "array"
+    },
     "capabilities": {
       "items": {
         "type": "string"
@@ -8,24 +15,80 @@
       "title": "Capabilities",
       "type": "array"
     },
+    "description": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Description"
+    },
+    "enabled": {
+      "default": true,
+      "title": "Enabled",
+      "type": "boolean"
+    },
+    "entrypoint": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Entrypoint"
+    },
     "maturity": {
       "default": "experimental",
+      "enum": [
+        "experimental",
+        "beta",
+        "stable"
+      ],
       "title": "Maturity",
       "type": "string"
     },
     "name": {
+      "minLength": 1,
       "title": "Name",
       "type": "string"
     },
+    "resources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "supported_domains": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Supported Domains",
+      "type": "array"
+    },
+    "task_kinds": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Task Kinds",
+      "type": "array"
+    },
     "version": {
+      "minLength": 1,
       "title": "Version",
       "type": "string"
     }
   },
   "required": [
     "name",
-    "version",
-    "capabilities"
+    "version"
   ],
   "title": "ProviderManifest",
   "type": "object"

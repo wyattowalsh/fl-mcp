@@ -3,31 +3,47 @@ title: Roadmap
 description: Planned milestones and future scope.
 ---
 
-## Purpose
+The roadmap tracks documentation and platform delivery priorities that affect
+agents, users, and release governance. It is not a substitute for executable
+validation; each milestone should point to docs, tests, or smoke evidence.
 
-Track planned FL MCP documentation and platform delivery priorities.
+## Current Priorities
 
-## Prerequisites
+| Lane | Status | Success Criteria |
+| --- | --- | --- |
+| Compact FastMCP surface | Active | 12 visible tools, full internal catalog discoverable, primitive tools hidden from `list_tools` |
+| uvx installability | Active | Published and local-source `uvx` commands work for server, doctor, install dry-run, and bridge commands |
+| Live FL Studio bridge | Active | Host-file bridge installs cleanly, FL script polls, safe transport read/write works with readback |
+| Docs package nesting | Active | JavaScript/TypeScript package files stay under `docs/`; docs commands use `--ignore-workspace` |
+| Validation evidence | Active | Public-surface, docs, install, and live-smoke checks have documented command groups |
 
-- Current status from `BUILD_STATUS.md`.
-- Architecture decisions recorded in ADRs.
-- Public API contract status reviewed.
+## Near-Term Work
 
-## Steps
+1. Keep the public API inventory aligned with the compact surface tests.
+2. Expand provider-specific live support only when FL Studio host evidence is
+   available.
+3. Keep operation workflow recipes tied to `fl_get_capability_schema` rather
+   than hand-maintained payload assumptions.
+4. Maintain actual-app smoke evidence separately from mock and harness evidence.
+5. Keep generated references current after schema or source inventory changes.
 
-1. Capture near-term milestones with explicit success criteria.
-2. Record dependency order and cross-team constraints.
-3. Separate planned, in-progress, and completed work clearly.
-4. Link roadmap entries to ADRs, release notes, and implementation artifacts.
+## Governance
+
+- Public-surface changes update [Public API Inventory](/docs/architecture/public-api-inventory).
+- Bridge behavior changes update [Bridge Protocol](/docs/architecture/bridge-protocol).
+- Documentation behavior changes update [Release Notes](/docs/release-notes).
+- Larger workstreams keep notes under the relevant `goals/` package.
 
 ## Verification
 
-- Every active roadmap item has an owner and status.
+- Every active roadmap item has concrete success criteria.
 - Dependencies and sequencing are explicit.
 - Outdated items are removed or marked superseded.
+- Public-surface items link to the public API inventory and release notes.
 
 ## Related Docs
 
 - [ADR Index](/docs/adr)
 - [Release Notes](/docs/release-notes)
+- [Validation Runbook](/docs/validation-runbook)
 - [Architecture](/docs/architecture)

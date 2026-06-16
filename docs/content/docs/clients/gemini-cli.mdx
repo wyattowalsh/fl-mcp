@@ -5,22 +5,46 @@ description: Configure FL MCP for Gemini CLI.
 
 ## Prerequisites
 
-- Local FL MCP runtime is installed and reachable.
-- Gemini CLI profile can load MCP transport/auth settings.
+- `uv` is installed.
+- Gemini CLI profile can launch stdio MCP commands.
+- Live FL Studio mode is optional; mock mode works without FL Studio.
 
 ## Configuration
 
-1. Register FL MCP endpoint details in the active Gemini CLI profile.
-2. Confirm credentials resolve from expected environment sources.
-3. Reload profile/session before validating tool calls.
+Use FL MCP as a stdio server.
+
+Published package:
+
+```json
+{
+  "command": "uvx",
+  "args": ["fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+Local checkout:
+
+```json
+{
+  "command": "uvx",
+  "args": ["--from", "/absolute/path/to/fl-mcp", "--with-editable", "/absolute/path/to/fl-mcp", "fl-mcp", "server", "run", "--mode", "stdio"]
+}
+```
+
+For live FL Studio mode, run `fl-mcp install --dry-run` and copy the matching
+`uvx_environment` values into the Gemini CLI MCP server environment.
 
 ## Verification
 
-- Gemini CLI can discover FL MCP surface without transport errors.
-- Representative commands execute with expected responses.
+- Gemini CLI discovers exactly 12 FL MCP tools.
+- `fl_status` reports `status="ok"` and `internal_operation_count=216`.
+- `fl_search_capabilities` and `fl_get_capability_schema` resolve a target
+  operation.
+- A representative `fl_execute` mock call succeeds before enabling live mode.
 
 ## Related Docs
 
 - [Client Setup](/docs/clients)
 - [Providers](/docs/providers)
+- [Operation Workflows](/docs/operation-workflows)
 - [Troubleshooting](/docs/troubleshooting)

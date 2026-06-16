@@ -1,0 +1,103 @@
+---
+title: Live FL Studio Smoke
+description: Manual actual-app smoke checklist for the packaged FL Studio bridge.
+---
+
+Use this checklist only when validating actual FL Studio behavior. Mock and live
+harness validation are useful, but they do not prove the MIDI script is selected
+and polling inside FL Studio.
+
+## Preflight
+
+1. Run install dry-run:
+
+   ```bash
+   uv run fl-mcp install --dry-run
+   ```
+
+2. Confirm the reported controller script source exists:
+
+   ```text
+   fl-bundle/controller/device_FL_MCP_Bridge.py
+   ```
+
+3. Copy it to the reported FL Studio hardware controller directory.
+4. Open FL Studio and select `FL MCP Bridge` in MIDI Settings.
+5. If FL Studio was already open when the script was copied, click
+   `Update MIDI scripts` in MIDI Settings or reselect the controller so the
+   loaded host script matches the installed file.
+6. Close the FL Studio Welcome window before expecting MIDI scripts to
+   initialize.
+7. Confirm the reported bridge directory is private to the current user. On a
+   standard macOS install this is normally:
+
+   ```text
+   ~/Documents/Image-Line/FL Studio/Settings/Hardware/FL MCP Bridge/bridge
+   ```
+
+## Environment
+
+Use the `uvx_environment` block from `fl-mcp install --dry-run` for normal MCP
+client configuration. For local source validation, the bridge command should
+look like:
+
+```bash
+uvx \
+  --from /absolute/path/to/fl-mcp \
+  --with-editable /absolute/path/to/fl-mcp \
+  python -m fl_mcp.bridge.host_client
+```
+
+## Smoke Sequence
+
+1. Confirm the DAW-side script wrote `status.json` with `state="ready"` in the
+   reported bridge directory.
+2. Call `fl_status` and confirm live bridge configuration is visible.
+3. Search for a known live operation:
+
+   ```json
+   {
+     "query": "transport tempo",
+     "domain": "transport",
+     "provider": "flapi-live"
+   }
+   ```
+
+4. Fetch the schema for `transport.get_tempo`.
+5. Execute `transport.get_tempo` with `provider="flapi-live"`.
+6. Execute a reversible or safe mutation such as `transport.set_tempo`.
+7. Read back with `transport.get_tempo`.
+8. Confirm the bridge directory has no leftover `request-*.json`,
+   `response-*.json`, or `*.tmp` files after `host_client` returns.
+
+## Evidence To Capture
+
+- FL Studio version and user-data folder.
+- Controller selected in MIDI Settings.
+- `FL_MCP_BRIDGE_MODE`.
+- `FL_MCP_FL_STUDIO_BRIDGE_CMD`.
+- `FL_MCP_FL_STUDIO_BRIDGE_DIR`.
+- Operation id and provider.
+- Request id if available.
+- Before and after readback values.
+- Any request/response files left for diagnostics.
+- `fl_mcp_bridge.log` only when `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` was enabled.
+
+## Timeout Interpretation
+
+If the installer-reported bridge directory stays empty after a timeout and
+`status.json` is missing or stale, treat that as evidence that FL Studio did not
+initialize or poll the script in that session. The next step is controller
+selection or reload inside FL Studio, not another server-side patch.
+
+If the Welcome window is open, close it and wait for `OnInit` before retrying.
+The MCP-side `host_client` performs request/response cleanup; after it returns,
+the bridge directory should contain `status.json` and no leftover
+`request-*.json`, `response-*.json`, or `*.tmp` files.
+
+## Related Docs
+
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
+- [Provider Docs](/docs/providers)
+- [Validation Runbook](/docs/validation-runbook)
+- [Troubleshooting](/docs/troubleshooting)

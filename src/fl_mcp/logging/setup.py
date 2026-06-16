@@ -5,31 +5,28 @@ from __future__ import annotations
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+
+_STANDARD_ATTRS = frozenset(logging.LogRecord("", 0, "", 0, "", (), None).__dict__)
 
 
 class JsonFormatter(logging.Formatter):
     """Small JSON formatter for startup/runtime logs."""
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: dict[str, Any] = {
-            "timestamp": datetime.now(UTC).isoformat(),
+        """Format a log record as a single-line JSON string."""
+        payload: dict[str, object] = {
+            "timestamp": datetime.fromtimestamp(record.created, UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
         }
-        for key in (
-            "event",
-            "transport",
-            "host",
-            "port",
-            "path",
-            "service",
-            "version",
-            "environment",
-        ):
-            if hasattr(record, key):
-                payload[key] = getattr(record, key)
+        for key, value in record.__dict__.items():
+            if key not in _STANDARD_ATTRS and key not in ("message", "args"):
+                payload[key] = value
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        if record.exc_text:
+            payload["exc_text"] = record.exc_text
         return json.dumps(payload, default=str)
 
 

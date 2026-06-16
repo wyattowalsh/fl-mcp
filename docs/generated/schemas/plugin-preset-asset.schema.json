@@ -1,0 +1,93 @@
+{
+  "description": "Preset, bank, or wrapper-state asset discovered on disk.",
+  "properties": {
+    "bank_or_single": {
+      "default": "unknown",
+      "enum": [
+        "bank",
+        "single",
+        "unknown"
+      ],
+      "title": "Bank Or Single",
+      "type": "string"
+    },
+    "extension": {
+      "default": "unknown",
+      "enum": [
+        "au",
+        "vst",
+        "vst3",
+        "clap",
+        "fst",
+        "fxp",
+        "fxb",
+        "unknown"
+      ],
+      "title": "Extension",
+      "type": "string"
+    },
+    "inferred_plugin": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Inferred Plugin"
+    },
+    "kind": {
+      "default": "unknown",
+      "enum": [
+        "preset",
+        "bank",
+        "wrapper_state",
+        "unknown"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "path": {
+      "minLength": 1,
+      "title": "Path",
+      "type": "string"
+    },
+    "safety": {
+      "default": "available",
+      "enum": [
+        "available",
+        "path_unavailable",
+        "plugin_mismatch",
+        "unsupported"
+      ],
+      "title": "Safety",
+      "type": "string"
+    },
+    "source_pack": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Pack"
+    },
+    "tags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    }
+  },
+  "required": [
+    "path"
+  ],
+  "title": "PluginPresetAsset",
+  "type": "object"
+}

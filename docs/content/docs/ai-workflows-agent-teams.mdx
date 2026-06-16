@@ -1,6 +1,55 @@
 ---
 title: AI Workflows & Agent Teams
-description: Collaborative workflows for multi-agent delivery.
+description: Agent collaboration patterns for operating and maintaining FL MCP.
 ---
 
-Describe orchestration patterns, delegation boundaries, and handoff expectations for AI-assisted development.
+FL MCP is designed for agentic use, but the safest workflow is still deliberate:
+discover, validate, execute, and verify. Multi-agent work should preserve that
+loop instead of splitting ownership across the same files or runtime surface.
+
+## Default Agent Loop
+
+1. Orient with `fl_status`, `fl_snapshot`, or resources.
+2. Search the internal catalog with `fl_search_capabilities`.
+3. Fetch the exact schema with `fl_get_capability_schema`.
+4. Execute through `fl_execute`, `fl_batch_execute`, `fl_plan`, or `fl_apply`.
+5. Verify with readback, a follow-up snapshot, task state, or generated docs.
+
+This loop applies equally to mock mode, live harness mode, and actual FL Studio
+mode. The provider and bridge mode should be visible in the result before an
+agent claims real DAW state changed.
+
+## Delegation Boundaries
+
+| Workstream | Good subagent boundary | Avoid |
+| --- | --- | --- |
+| Docs | One agent audits pages while another edits non-overlapping files | Two agents editing the same MDX page |
+| Public surface | One agent verifies tool/resource counts while another updates docs | Adding visible tools without inventory changes |
+| Live bridge | One agent handles DAW/manual evidence while another handles code/docs | Claiming live success from mock-only validation |
+| Release checks | One agent runs validations while another reviews diffs | Leaving generated outputs dirty after build checks |
+
+## Handoff Checklist
+
+- Exact branch and dirty-tree status.
+- Files edited and files intentionally left untouched.
+- Commands run, with pass/fail status.
+- Public tool count, internal operation count, and provider mode when relevant.
+- Live FL Studio evidence when actual-app validation is claimed.
+- Generated docs status: regenerated, verified, or intentionally unchanged.
+
+## Failure Handling
+
+When a validation fails, the next agent should receive the exact command,
+exit code, and error text. Do not summarize failures as "docs broke" or "bridge
+failed"; name the missing file, operation id, provider, request id, or command.
+
+If a live FL Studio check times out and the bridge directory remains empty, treat
+that as controller initialization evidence. Do not keep patching server code
+without first proving the MIDI script is selected and polling.
+
+## Related Docs
+
+- [Getting Started](/docs/getting-started)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
+- [Troubleshooting](/docs/troubleshooting)

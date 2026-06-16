@@ -1,6 +1,87 @@
 ---
 title: Concepts
-description: Core conceptual model used by FL MCP.
+description: Core concepts for the FL MCP compact agent surface.
 ---
 
-Key concepts include sessions, tools, transports, capability negotiation, and schema-backed IO contracts.
+FL MCP separates the small public MCP surface from the larger FL Studio
+operation catalog. Agents see a compact set of tools and discover the deeper DAW
+capabilities through schemas, resources, and prompts.
+
+## Compact Surface
+
+The visible FastMCP tool surface is intentionally small: 12 tools. It behaves
+like a DAW control console instead of a dumped API catalog. The compact surface
+includes status, snapshots, capability search, schema lookup, execution, batch
+execution, planning, apply, render, audio analysis, provider management, and
+browser workflow entrypoints.
+
+## Internal Operation Catalog
+
+The internal catalog contains 216 typed FL Studio operations across 16 domains.
+Each operation has a canonical id such as `mixer.set_track_volume`, request and
+response models, provider metadata, safety metadata, and example payloads.
+
+Agents reach those operations through `fl_execute` and `fl_batch_execute`, not
+as individual visible MCP tools.
+
+## Plugin Profiles
+
+Third-party plugin support is profile-first. Built-in seed profiles define
+semantic controls for families such as Sylenth1, Serum, FabFilter, ShaperBox,
+CamelCrusher, Drumazon, ValhallaRoom, and desired iZotope Trash targets. Local
+calibration overlays map those semantic controls to the parameter indices that
+FL Studio exposes for the installed wrapper instance.
+
+Use `fl_browser` or `fl_search_capabilities` to discover profile operations,
+then `fl_get_capability_schema` for exact payloads. Mapped writes such as
+`plugins.set_mapped_parameter` fail closed with `calibration_required` until a
+live probe or curated overlay verifies the FL parameter index.
+
+## Providers
+
+Providers describe where an operation can run:
+
+- `mock` is deterministic and covers the full internal catalog.
+- `flapi-live` is the packaged live bridge provider. In live mode,
+  `provider="auto"` resolves to `flapi-live` for every catalog operation.
+  Verified operations report `available`; the remaining forced-live operations
+  report `attemptable` and fail closed with structured live errors when the host
+  API cannot execute them.
+- Narrower provider paths may exist for host-specific scripting surfaces.
+
+Provider metadata is part of the contract. Live operations only report success
+after DAW confirmation; unsupported host behavior must be visible as structured
+error data rather than implicit mock execution.
+
+## Resources
+
+Resources are the preferred read path. Use resources and snapshots before
+mutating FL Studio state:
+
+- `runtime://health`
+- `runtime://capabilities`
+- `providers://matrix`
+- `project://snapshot`
+- `project://arrangement`
+
+Resource templates expose domain capability views, render job state, and audio
+analysis state.
+
+## Transactions
+
+Transactional changes flow through `fl_plan` and `fl_apply`. Use them when a
+change needs preview, rollback policy, checkpointing, or multi-operation safety.
+Use `fl_execute` for a single typed operation and `fl_batch_execute` for ordered
+workflows that need readback.
+
+## Readback
+
+Readback is a first-class safety pattern. After any state-changing operation,
+prefer an explicit readback operation, task status read, or `fl_snapshot` so the
+agent can report observed state rather than assumed success.
+
+## Related Docs
+
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Architecture](/docs/architecture)
+- [Provider Docs](/docs/providers)

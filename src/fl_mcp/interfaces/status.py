@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
 
 
 class HealthState(StrEnum):
@@ -41,7 +40,7 @@ class HelperStatusPayload:
     logs: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> dict[str, object]:
         """Convert payload to a JSON-serializable dictionary."""
 
         data = asdict(self)

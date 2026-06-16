@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import ValidationError
 
 from fl_mcp.schemas import TransactionEnvelope
 from fl_mcp.transactions.rollback import ROLLBACK_POLICY_BY_CLASSIFICATION
 
 
-def validate_envelope(envelope: dict[str, Any]) -> bool:
+def validate_envelope(envelope: dict[str, object]) -> bool:
     """Validate envelope using canonical schema contracts."""
     try:
         TransactionEnvelope.model_validate(envelope)

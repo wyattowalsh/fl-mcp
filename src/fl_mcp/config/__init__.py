@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Any, cast
 
 from fl_mcp import __version__
 
@@ -58,20 +59,22 @@ class AppConfig:
         if not values:
             return cls()
 
-        runtime_values = values.get("runtime")
-        stdio_values = values.get("stdio")
-        http_values = values.get("streamable_http")
+        runtime_values = _mapping_values(values.get("runtime"))
+        stdio_values = _mapping_values(values.get("stdio"))
+        http_values = _mapping_values(values.get("streamable_http"))
 
-        runtime = (
-            RuntimeConfig(**runtime_values) if isinstance(runtime_values, dict) else RuntimeConfig()
-        )
-        stdio = StdioConfig(**stdio_values) if isinstance(stdio_values, dict) else StdioConfig()
+        runtime = RuntimeConfig(**runtime_values) if runtime_values else RuntimeConfig()
+        stdio = StdioConfig(**stdio_values) if stdio_values else StdioConfig()
         streamable_http = (
-            StreamableHTTPConfig(**http_values)
-            if isinstance(http_values, dict)
-            else StreamableHTTPConfig()
+            StreamableHTTPConfig(**http_values) if http_values else StreamableHTTPConfig()
         )
         return cls(runtime=runtime, stdio=stdio, streamable_http=streamable_http)
+
+
+def _mapping_values(value: object) -> dict[str, Any]:
+    if not isinstance(value, Mapping):
+        return {}
+    return cast(dict[str, Any], dict(value))
 
 
 __all__ = [

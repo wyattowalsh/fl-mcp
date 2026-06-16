@@ -1,6 +1,51 @@
 ---
 title: Helper App
-description: Internal helper app behavior and contracts.
+description: Helper app responsibilities, boundaries, and diagnostics contracts.
 ---
 
-This section covers helper app responsibilities, extension points, and operational hooks.
+The helper app is a diagnostics companion. It should surface CLI status,
+install hints, and logs; it should not become a second MCP server, bridge
+router, or operation dispatcher.
+
+## Responsibilities
+
+- Show runtime status from CLI diagnostics.
+- Surface bridge install instructions from `fl-mcp install --dry-run`.
+- Present doctor results and logs in a user-readable way.
+- Help users verify whether the packaged FL Studio controller script is present.
+
+## Non-Responsibilities
+
+- Do not duplicate `fl_execute`, `fl_batch_execute`, provider routing, or
+  transaction logic.
+- Do not implement bridge policy in Swift.
+- Do not bypass the Python CLI for live FL Studio mutations.
+- Do not store secrets or persistent MCP client credentials.
+
+## Interface Contract
+
+The helper-facing payload contract is documented in `docs/interfaces.md` and
+implemented in `src/fl_mcp/interfaces/status.py`. Keep those files aligned when
+helper endpoints or payload fields change.
+
+The current CLI-facing commands are:
+
+```bash
+uv run fl-mcp diagnostics shell --endpoint status
+uv run fl-mcp diagnostics shell --endpoint diagnostics
+uv run fl-mcp doctor --format json
+uv run fl-mcp install --dry-run
+```
+
+## Validation
+
+- Helper UI changes should keep the helper thin and diagnostics-focused.
+- Contract changes should update `docs/interfaces.md`.
+- CLI payload changes should include Python-side tests and helper-side decoding
+  checks where the Swift toolchain is available.
+
+## Related Docs
+
+- [Installation](/docs/installation)
+- [Troubleshooting](/docs/troubleshooting)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)

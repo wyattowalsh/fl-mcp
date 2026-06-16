@@ -1,0 +1,109 @@
+{
+  "description": "One locally discovered plugin or preset-backed plugin candidate.",
+  "properties": {
+    "bundle_paths": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Bundle Paths",
+      "type": "array"
+    },
+    "detected_by": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Detected By",
+      "type": "array"
+    },
+    "display_name": {
+      "minLength": 1,
+      "title": "Display Name",
+      "type": "string"
+    },
+    "favorite_entries": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Favorite Entries",
+      "type": "array"
+    },
+    "fl_database_entries": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Fl Database Entries",
+      "type": "array"
+    },
+    "formats": {
+      "items": {
+        "enum": [
+          "au",
+          "vst",
+          "vst3",
+          "clap",
+          "fst",
+          "fxp",
+          "fxb",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "title": "Formats",
+      "type": "array"
+    },
+    "kind": {
+      "default": "unknown",
+      "enum": [
+        "instrument",
+        "effect",
+        "instrument_or_effect",
+        "unknown"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "plugin_id": {
+      "minLength": 1,
+      "title": "Plugin Id",
+      "type": "string"
+    },
+    "preset_paths": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Preset Paths",
+      "type": "array"
+    },
+    "status": {
+      "default": "unknown",
+      "enum": [
+        "installed",
+        "filesystem_only",
+        "fl_database_only",
+        "preset_only",
+        "not_installed",
+        "unknown"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "vendor": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vendor"
+    }
+  },
+  "required": [
+    "plugin_id",
+    "display_name"
+  ],
+  "title": "PluginInventoryItem",
+  "type": "object"
+}

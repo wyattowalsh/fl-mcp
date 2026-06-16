@@ -15,7 +15,9 @@ if (check.status !== 0) {
   process.exit(check.status ?? 1);
 }
 
-const build = spawnSync('pnpm', ['exec', 'next', 'build', ...process.argv.slice(2)], {
+const nextBin = process.platform === 'win32' ? 'next.cmd' : 'next';
+
+const build = spawnSync(nextBin, ['build', ...process.argv.slice(2)], {
   cwd: docsRoot,
   stdio: 'inherit'
 });

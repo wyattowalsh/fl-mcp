@@ -3,16 +3,53 @@ title: Documentation Home
 description: Entry point for FL MCP platform docs.
 ---
 
-Welcome to the **FL MCP docs app**.
+FL MCP is a local-first FastMCP server for FL Studio. The public MCP surface is
+12 visible tools backed by 216 typed internal operations across 16 FL Studio
+domains.
 
 ## Start Here
 
 - [Getting Started](/docs/getting-started)
 - [Installation](/docs/installation)
+- [Concepts](/docs/concepts)
+- [Operation Workflows](/docs/operation-workflows)
+- [Validation Runbook](/docs/validation-runbook)
 - [Troubleshooting](/docs/troubleshooting)
+
+## Install Path
+
+Use `uvx` for normal client usage:
+
+```bash
+uvx fl-mcp --version
+uvx fl-mcp server run --mode stdio --dry-run
+uvx fl-mcp doctor --format json
+```
+
+Before publication, test this checkout with:
+
+```bash
+uvx --from /absolute/path/to/fl-mcp --with-editable /absolute/path/to/fl-mcp fl-mcp --version
+```
 
 ## Discovery
 
 - [Providers](/docs/providers)
+- [Client Setup](/docs/clients)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
+- [Live FL Studio Smoke](/docs/live-fl-studio-smoke)
 - [ADR Index](/docs/adr)
 - [Reference](/docs/reference/api-schema)
+
+## Agent Control Loop
+
+1. Start with `fl_status` or `fl_snapshot`.
+2. Search intent with `fl_search_capabilities`.
+3. Fetch schemas with `fl_get_capability_schema`.
+4. Execute with `fl_execute`, `fl_batch_execute`, `fl_plan`, or `fl_apply`.
+5. Verify with readback, resources, task state, or another snapshot.
+
+Primitive FL operations are intentionally hidden from `list_tools`; use
+canonical operation ids such as `mixer.set_track_volume` through the compact
+executor tools.

@@ -1,0 +1,252 @@
+---
+title: Operation Workflows
+description: Practical compact-surface recipes for common FL MCP tasks.
+---
+
+Use these recipes as agent-facing patterns. The exact request schema should
+still come from `fl_get_capability_schema` before execution, because provider
+support, safety notes, and payload fields can change with the operation catalog.
+
+## Discovery First
+
+Start every new workflow with capability search:
+
+```json
+{
+  "query": "set mixer track volume",
+  "domain": "mixer",
+  "provider": "auto"
+}
+```
+
+Then fetch the exact schema:
+
+```json
+{
+  "operation_id": "mixer.set_track_volume"
+}
+```
+
+Only execute after the schema confirms payload shape, provider support, and
+readback guidance.
+
+## Set Tempo With Readback
+
+```json
+{
+  "operation_id": "transport.set_tempo",
+  "provider": "auto",
+  "request": {
+    "bpm": 128
+  },
+  "readback": {
+    "operation_id": "transport.get_tempo",
+    "request": {},
+    "provider": "auto"
+  }
+}
+```
+
+Use explicit `provider="flapi-live"` only after live bridge setup is verified
+and the schema lists that provider as `available` or `attemptable` for the
+exact operation. In live mode, `provider="auto"` attempts `flapi-live` and never
+silently uses mock.
+
+## Adjust Mixer Volume Safely
+
+```json
+{
+  "operation_id": "mixer.set_track_volume",
+  "provider": "mock",
+  "request": {
+    "track_index": 0,
+    "volume": 0.75
+  },
+  "readback": {
+    "operation_id": "mixer.get_track_volume",
+    "request": {
+      "track_index": 0
+    },
+    "provider": "mock"
+  }
+}
+```
+
+For actual FL Studio mixer operations, inspect the schema first. Verified
+operations report `available`; forced-live operations report `attemptable` and
+can return `api_missing`, `unsupported_host_behavior`, or `host_exception` if
+the current FL host lacks a compatible callable.
+
+## Batch A Read-Modify-Read Workflow
+
+Use `fl_batch_execute` when each step should be ordered and reported together:
+
+```json
+{
+  "operations": [
+    {
+      "operation_id": "transport.get_tempo",
+      "request": {},
+      "provider": "auto"
+    },
+    {
+      "operation_id": "transport.set_tempo",
+      "request": {
+        "bpm": 124
+      },
+      "provider": "auto"
+    },
+    {
+      "operation_id": "transport.get_tempo",
+      "request": {},
+      "provider": "auto"
+    }
+  ],
+  "policy": "stop-on-error",
+  "readback_policy": "after_each"
+}
+```
+
+Batch results should be inspected step by step. Do not infer later success from
+an earlier successful step.
+
+## Render And Analyze
+
+Use the high-level task entrypoints for long-running outputs:
+
+1. Call `fl_render` with the render/export request.
+2. Record the returned task id.
+3. Read the render task resource template when available.
+4. Call `fl_analyze_audio` on the exported artifact.
+5. Read the audio-analysis resource template when available.
+
+In mock mode, these task paths should still return deterministic task metadata.
+In live mode, `provider="auto"` attempts `flapi-live`. Capture provider, bridge
+mode, output path, task id, and any DAW status text. If FL exposes no render or
+analysis callable, the result is a structured `api_missing` failure.
+
+## Browser Workflow
+
+Use `fl_browser` for plugin, preset, sample, drum-kit, and asset workflow
+discovery. In v1 it returns operation candidates and an `asset_discovery_status`
+object; treat it as a capability workflow wrapper, not a raw file loader:
+
+1. Search assets by type and intent.
+2. Inspect candidate metadata.
+3. Load the selected asset through `flapi-live` in live mode or explicit `mock`
+   for rehearsal.
+4. Verify the target channel, plugin slot, playlist item, or project snapshot.
+
+## Plugin Profile Workflow
+
+Use plugin profiles when an agent needs semantic controls such as "Sylenth
+cutoff" or "FabFilter Pro-Q output gain" instead of raw FL wrapper parameter
+indices.
+
+1. Discover local evidence:
+
+   ```json
+   {
+     "action": "search",
+     "kind": "plugin",
+     "query": "sylenth cutoff"
+   }
+   ```
+
+2. Fetch the mapped write schema:
+
+   ```json
+   {
+     "operation_id": "plugins.set_mapped_parameter"
+   }
+   ```
+
+3. Probe the target plugin instance in live mode when FL Studio is available:
+
+   ```json
+   {
+     "operation_id": "plugins.probe_instance",
+     "provider": "auto",
+     "request": {
+       "profile_id": "lennardigital.sylenth1",
+       "channel_index": 0
+     }
+   }
+   ```
+
+4. Enumerate the raw FL-exposed parameter surface when a priority plugin is
+   loadable:
+
+   ```json
+   {
+     "operation_id": "plugins.enumerate_parameters",
+     "provider": "auto",
+     "request": {
+       "profile_id": "lennardigital.sylenth1",
+       "channel_index": 0,
+       "max_parameters": 256
+     }
+   }
+   ```
+
+   Raw enumeration uses FL wrapper parameter indices and normalized values. It
+   can return partial results if a parameter name, value, or value string fails.
+
+5. Generate a raw profile preview when agents need all FL-exposed controls:
+
+   ```json
+   {
+     "operation_id": "plugins.generate_raw_profile",
+     "provider": "auto",
+     "request": {
+       "profile_id": "lennardigital.sylenth1",
+       "channel_index": 0
+     }
+   }
+   ```
+
+6. Learn or load a verified calibration overlay for the local wrapper instance.
+   A semantic control without a verified parameter index returns
+   `calibration_required`.
+
+7. Execute the mapped control with readback:
+
+   ```json
+   {
+     "operation_id": "plugins.set_mapped_parameter",
+     "provider": "auto",
+     "request": {
+       "profile_id": "lennardigital.sylenth1",
+       "control_id": "filter.cutoff",
+       "value": 1000
+     }
+   }
+   ```
+
+Profiles are not vendor-specific live APIs. They describe semantics and value
+maps; FL execution still goes through host-exposed plugin parameter indices.
+Priority support is paid-first: P0 covers installed paid plugins, P1 covers
+paid/pro suite targets, P2 covers popular/useful stock or free tools, and P3
+remains inventory-visible/on-demand.
+
+## Hardstyle Template Preflight
+
+Use the hardstyle recipe to verify the selected-controller route before any
+template mutation:
+
+```bash
+uv run fl-mcp template hardstyle --audit-dir goals/hardstyle-template/latest
+```
+
+The command reads transport, mixer, channel, and plugin state through the active
+`FL Studio MCP Controller` compatibility path, writes JSON/Markdown audit
+artifacts, and refuses mutation until the same live path supports scratch
+project save-as, pattern creation, piano-roll note writing, playlist placement,
+plugin loading, and render/export.
+
+## Related Docs
+
+- [Concepts](/docs/concepts)
+- [Provider Docs](/docs/providers)
+- [Public API Inventory](/docs/architecture/public-api-inventory)
+- [Validation Runbook](/docs/validation-runbook)

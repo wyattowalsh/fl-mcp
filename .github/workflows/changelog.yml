@@ -1,0 +1,90 @@
+name: Changelog Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version or tag to preview (example: 0.1.0 or v0.1.0)"
+        required: true
+      previous_tag:
+        description: "Optional previous release tag for the changelog range"
+        required: false
+      target_commitish:
+        description: "Target commitish used when the tag does not exist yet"
+        required: false
+        default: main
+
+concurrency:
+  group: changelog-preview-${{ inputs.version }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  preview:
+    name: Generate release notes preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          fetch-depth: 0
+      - name: Validate inputs
+        env:
+          VERSION: ${{ inputs.version }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          TARGET_COMMITISH: ${{ inputs.target_commitish }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+
+          version = os.environ["VERSION"].strip()
+          previous_tag = os.environ["PREVIOUS_TAG"].strip()
+          target_commitish = os.environ["TARGET_COMMITISH"].strip()
+
+          version_pattern = re.compile(r"^v?\d+\.\d+\.\d+(?:[a-zA-Z0-9.-]+)?$")
+          if not version_pattern.fullmatch(version):
+              raise SystemExit(f"Invalid release version/tag: {version!r}")
+          if previous_tag and not previous_tag.startswith("v"):
+              raise SystemExit("previous_tag must be a tag name such as v0.1.0.")
+          if not target_commitish:
+              raise SystemExit("target_commitish is required.")
+          PY
+      - name: Generate release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+          TARGET_COMMITISH: ${{ inputs.target_commitish }}
+        run: |
+          set -euo pipefail
+
+          tag="${VERSION}"
+          if [[ "${tag}" != v* ]]; then
+            tag="v${tag}"
+          fi
+
+          args=(
+            -f "tag_name=${tag}"
+            -f "target_commitish=${TARGET_COMMITISH}"
+            -f "configuration_file_path=.github/release.yml"
+          )
+          if [[ -n "${PREVIOUS_TAG}" ]]; then
+            args+=(-f "previous_tag_name=${PREVIOUS_TAG}")
+          fi
+
+          gh api "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            "${args[@]}" \
+            --jq '"# " + .name + "\n\n" + .body' > RELEASE_NOTES.md
+
+          {
+            echo "## Release notes preview"
+            echo
+            cat RELEASE_NOTES.md
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: release-notes-preview
+          path: RELEASE_NOTES.md

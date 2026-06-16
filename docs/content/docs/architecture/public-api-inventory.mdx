@@ -1,58 +1,176 @@
 ---
 title: Public API Inventory
-description: Locked public MCP surface for resources and tools.
+description: Governed compact FastMCP surface for FL Studio resources, templates, prompts, and tools.
 ---
 
-This document captures the **locked** public MCP interface and is the canonical reference for what external clients may depend on.
+This document captures the canonical public MCP interface for FL MCP. External clients may depend
+on the resources, templates, prompts, and tools listed here. The generated API reference must
+enumerate the same visible roster.
 
-## Public MCP Surface (Locked)
+## Public MCP Surface
+
+The normal server exposes one compact, full-power FastMCP surface. It does not expose primitive
+tools such as `fl_mixer_set_track_volume` or `mixer_set_track_volume`. The internal FL catalog is
+addressed by operation id through `fl_execute`, `fl_batch_execute`, search, schemas, resources, and
+workflow prompts.
 
 ### Resources
 
-The public resource surface is intentionally minimal:
-
 - `runtime://health`
+- `runtime://capabilities`
+- `providers://matrix`
+- `project://snapshot`
+- `project://arrangement`
+
+### Resource Templates
+
+- `runtime://capabilities/{domain}`
+- `render://jobs/{job_id}`
+- `audio://analyses/{analysis_id}`
 
 ### Tools
 
-The public tool surface is intentionally minimal and resource-first aligned:
+The visible tool roster is exactly 12 tools:
 
-- `query_project`
-- `plan_changes`
-- `apply_changes`
-- `render_project`
-- `analyze_audio`
-- `inspect_runtime`
-- `manage_providers`
-- `runtime_health`
+- `fl_status` — runtime, FL connection, provider, bridge, task, and catalog health.
+- `fl_snapshot` — project/session/domain state read path.
+- `fl_search_capabilities` — search internal operations by intent, domain, provider, safety, and task status.
+- `fl_get_capability_schema` — exact request/response schema, examples, provider support, and safety/readback guidance.
+- `fl_execute` — execute one typed internal FL operation by canonical `domain.operation` id.
+- `fl_batch_execute` — execute ordered operation batches with stop/continue and readback policy.
+- `fl_plan` — preview transaction-envelope changes.
+- `fl_apply` — apply transaction-envelope changes through rollback-aware transaction handling.
+- `fl_render` — render/export task entrypoint.
+- `fl_analyze_audio` — audio-analysis task entrypoint.
+- `fl_manage_providers` — provider lifecycle and routing inspection.
+- `fl_browser` — browser-style plugin, preset, sample, drum-kit, and asset workflow.
 
-Any additional resources/tools listed in roadmap or design documents are planned surfaces and are **not** public until implemented and recorded here.
+### Prompts
 
-## Stability Contract
+The prompt registry is registered as first-class FastMCP prompts:
 
-- Public entries listed in this document are considered part of the compatibility contract.
-- Additions, removals, or semantic changes require an ADR and versioning impact assessment.
-- Internal implementation changes that do not alter public behavior do not require contract changes.
+- `diagnostics`
+- `transaction_guidance`
+- `build_beat`
+- `load_instrument_or_effect`
+- `create_automation`
+- `arrange_sections`
+- `safe_mix_adjustment`
+- `render_and_analyze`
 
-## No Accidental Expansion Policy
+## Internal Operation Catalog
 
-To prevent API sprawl and accidental client coupling:
+The internal catalog currently contains 216 FL operations across 16 domains:
 
-1. **Default deny:** new MCP resources/tools are private by default.
-2. **Explicit promotion required:** public exposure requires:
-   - an ADR describing rationale and lifecycle,
-   - update to this inventory,
-   - compatibility notes in release documentation.
-3. **Name and schema review gate:** promoted items must pass naming, schema, and ownership review.
-4. **Deprecation path mandatory:** any replacement/removal must define deprecation windows and migration guidance.
-5. **CI/documentation guard:** public-surface changes must fail review if this file is not updated in the same change set.
+| Domain | Count |
+| --- | ---: |
+| `arrangement` | 5 |
+| `audio` | 3 |
+| `automation` | 7 |
+| `channels` | 26 |
+| `connection` | 2 |
+| `device` | 5 |
+| `general` | 19 |
+| `midi` | 5 |
+| `mixer` | 30 |
+| `patterns` | 10 |
+| `piano-roll` | 10 |
+| `playlist` | 18 |
+| `plugins` | 38 |
+| `render` | 3 |
+| `transport` | 21 |
+| `ui` | 14 |
 
-## Change Control Checklist
+Each operation is serialized with a canonical operation id such as
+`mixer.set_track_volume`, its legacy tool name, request/response model names,
+operation-level provider support, safety annotations, task metadata, and
+examples. Agents discover operations with `fl_search_capabilities`, fetch
+schemas with `fl_get_capability_schema`, and execute through `fl_execute` or
+`fl_batch_execute`.
 
-Before merging any public-surface change:
+## Provider Notes
 
-- [ ] ADR approved.
-- [ ] Inventory updated in this file.
-- [ ] Compatibility impact documented.
-- [ ] Migration/deprecation notes prepared (if applicable).
-- [ ] Release notes entry prepared.
+- `mock` supports the whole catalog and is deterministic for CI and local development.
+  In live production mode, `provider="auto"` must not silently fall back to mock;
+  callers use `provider="mock"` explicitly for rehearsal.
+- `flapi-live` advertises the whole catalog as a forced-live host-file bridge
+  path. The bridge attempts candidate FL Python module/function calls for every
+  operation. Verified smoke-safe operations report `available`; the remaining
+  operations report `attemptable` and can return structured `api_missing`,
+  `unsupported_host_behavior`, `path_unavailable`, or `host_exception` failures
+  without falling back to mock.
+- `piano-roll-script` and `midi-fallback` expose narrower exact operation paths
+  where FL Studio host support exists.
+- Capability schema responses keep the compatibility `provider_support` list and
+  add `provider_support_details` records containing provider, support status,
+  execution mode, preconditions, readback operation id, and failure policy.
+- Live render/export, audio analysis, sample loading, plugin loading, playlist,
+  piano-roll, automation, and other broad DAW flows are attempted through
+  `flapi-live` in live mode. They only report success after DAW confirmation.
+
+## Plugin Profile Operations
+
+The `plugins` domain includes declarative profile operations for local plugin
+inventory, profile lookup, live parameter probing, raw FL parameter-name
+enumeration, raw profile generation, local calibration overlays, priority
+support audits, semantic mapped-parameter read/write, preset discovery,
+profile-scoped preset loading, and inventory reconciliation. These remain
+internal operation ids such as `plugins.enumerate_parameters`,
+`plugins.priority_support_audit`, and `plugins.set_mapped_parameter`.
+
+Profiles are semantic seeds, not proof of executable parameter indices. FL
+wrapper indices must come from live calibration or a verified local overlay.
+Uncalibrated semantic writes return structured failures such as
+`calibration_required`, `parameter_unmapped`, `plugin_not_installed`, or
+`preset_unavailable`.
+
+Plugin support is priority-scoped: paid installed plugins are P0, detected
+paid/pro suite targets are P1, popular/useful stock or free tools are P2, and
+the long tail remains P3 inventory-only/on-demand. P3 rows stay discoverable,
+but they are not release blockers.
+
+## Migration Notes
+
+Clients that previously called primitive visible tools must migrate to the compact executor:
+
+```json
+{
+  "tool": "fl_execute",
+  "arguments": {
+    "operation_id": "mixer.set_track_volume",
+    "request": { "track_index": 0, "volume": 0.75 },
+    "provider": "mock",
+    "readback": {
+      "operation_id": "mixer.get_track_volume",
+      "request": { "track_index": 0 },
+      "provider": "mock"
+    }
+  }
+}
+```
+
+Use this agent loop:
+
+1. `fl_status` or `fl_snapshot`
+2. `fl_search_capabilities`
+3. `fl_get_capability_schema`
+4. `fl_execute`, `fl_batch_execute`, `fl_plan`, or `fl_apply`
+5. Readback or snapshot verification
+
+## Governance
+
+Any addition, removal, or reorganization of the public agent surface is a public API change:
+
+- update this inventory,
+- update `docs/content/docs/release-notes.mdx`,
+- update the relevant `goals/` package when the change belongs to an active goal,
+- regenerate generated reference docs with `pnpm --dir docs --ignore-workspace docs:generate-reference`,
+- verify generated reference docs with `pnpm --dir docs --ignore-workspace docs:verify-reference`,
+- run `uv run pytest tests/contract/test_public_surface.py`,
+- inspect the FastMCP roster with `uv run fastmcp inspect fastmcp.json --format mcp`.
+
+Generated reference files under `docs/content/docs/reference/generated/` must be regenerated, not
+hand-edited.
+
+See [Validation Runbook](/docs/validation-runbook) for command groupings and
+evidence expectations.

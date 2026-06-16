@@ -9,6 +9,7 @@ import json
 def build_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
 ) -> None:
+    """Register the ``config`` subcommand for inspecting CLI configuration."""
     config_parser = subparsers.add_parser("config", help="Inspect and manage CLI config")
     config_subparsers = config_parser.add_subparsers(dest="config_command", required=True)
 
@@ -23,6 +24,7 @@ def build_parser(
 
 
 def handle_config_shell(args: argparse.Namespace) -> int:
+    """Emit shell-ready config exports as env vars or JSON."""
     config = {
         "FL_MCP_HOME": "~/.fl-mcp",
         "FL_MCP_TRANSPORT": "stdio",
