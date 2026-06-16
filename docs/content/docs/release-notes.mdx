@@ -3,6 +3,19 @@ title: Release Notes
 description: Documentation-centric release notes.
 ---
 
+## 2026-06-16 - FL MCP Production Flow Agent Skill
+
+- Added the repo-local `fl-mcp-production-flow` agent skill for setup-first FL
+  Studio production workflows through the compact FL MCP surface.
+- Added a deterministic `setup-check.py` helper that reports JSON readiness for
+  mock and live workflows without starting a persistent MCP server or mutating
+  FL Studio.
+- Added skill references and evals for setup gating, mock rehearsal, live-mode
+  safety, render/audio evidence, and negative routing away from runtime,
+  database, data-pipeline, and visual UI changes.
+- Kept the public FastMCP server surface unchanged; the skill guides agents but
+  does not add visible MCP tools or runtime providers.
+
 ## 2026-06-15 - Plugin Profile Extensibility
 
 - Added priority-scoped plugin support tiers: P0 paid installed targets, P1

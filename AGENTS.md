@@ -13,6 +13,7 @@ Scope: entire repository unless overridden by nested AGENTS.md.
 ## Documentation And Release Notes
 
 - After public API, file layout, docs tooling, bridge behavior, agent instructions, or install commands change, update the relevant docs in the same change set.
+- Agent skill changes under `skills/` must follow `skills/AGENTS.md` and keep README, release notes, workflow docs, evals, and install-discovery guidance aligned.
 - Use `goals/`, release notes, and the public API inventory for change/governance records in this tree. Do not reference removed root ledgers unless they are restored.
 - Regenerate generated reference docs with `pnpm --dir docs --ignore-workspace docs:generate-reference`; do not hand-edit files under `docs/content/docs/reference/generated/`.
 - The JavaScript/TypeScript docs package is nested under `docs/`. Do not recreate root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or `Makefile` docs aliases.

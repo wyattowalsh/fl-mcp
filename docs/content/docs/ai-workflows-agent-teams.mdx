@@ -19,10 +19,33 @@ This loop applies equally to mock mode, live harness mode, and actual FL Studio
 mode. The provider and bridge mode should be visible in the result before an
 agent claims real DAW state changed.
 
+## Production Flow Skill
+
+Use the repo-local `fl-mcp-production-flow` skill for FL Studio production
+workflows that should be driven through FL MCP rather than by manual UI
+instructions. The skill adds a setup-first gate before mock rehearsal, live
+execution, render/export, audio analysis, or evidence audit work.
+
+Installability can be previewed from the repository root:
+
+```bash
+npx skills add . --skill fl-mcp-production-flow --list
+```
+
+The setup check is machine-readable and does not start a persistent MCP server:
+
+```bash
+python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode mock --source local --repo-root . --format json
+```
+
+The skill is not a public MCP surface expansion. It should not add visible MCP
+tools, runtime providers, database migrations, data pipelines, or docs app UI.
+
 ## Delegation Boundaries
 
 | Workstream | Good subagent boundary | Avoid |
 | --- | --- | --- |
+| Production skill | One agent owns `SKILL.md`, separate agents own references, evals, and setup script | A skill edit that changes server runtime or public tool inventory |
 | Docs | One agent audits pages while another edits non-overlapping files | Two agents editing the same MDX page |
 | Public surface | One agent verifies tool/resource counts while another updates docs | Adding visible tools without inventory changes |
 | Live bridge | One agent handles DAW/manual evidence while another handles code/docs | Claiming live success from mock-only validation |

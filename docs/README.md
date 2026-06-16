@@ -27,6 +27,8 @@ If your current directory is already `docs/`, omit `--dir docs` and keep
 ## Content Map
 
 - `content/docs/operation-workflows.mdx` documents compact-surface recipes.
+- `content/docs/ai-workflows-agent-teams.mdx` documents agent handoffs,
+  repo-local production-flow skill usage, and evidence expectations.
 - `content/docs/validation-runbook.mdx` documents validation command groups.
 - `content/docs/live-fl-studio-smoke.mdx` documents actual-app smoke evidence.
 - `content/docs/architecture/public-api-inventory.mdx` is the public MCP contract.

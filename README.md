@@ -198,6 +198,7 @@ remain private to the current user.
 | ![Book][icon-book-open] | `docs/` | Fumadocs app, generated references, and content. |
 | ![Music][icon-music] | `fl-bundle/` | FL Studio controller and DAW-side bridge files. |
 | ![Activity][icon-activity] | `helper/` | Thin macOS diagnostics helper scaffold. |
+| ![Workflow][icon-workflow] | `skills/` | Repo-local agent skills for FL MCP workflows. |
 | ![Workflow][icon-workflow] | `goals/` | Goal packages, audits, and validation notes. |
 | ![Shield][icon-shield-check] | `tests/` | Contract, unit, integration, benchmark, and smoke coverage. |
 
@@ -230,6 +231,18 @@ pnpm --dir docs --ignore-workspace build
 pnpm --dir docs --ignore-workspace dev
 ```
 
+Skill package checks:
+
+```bash
+python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode mock --source local --repo-root . --format json
+python3 -m json.tool skills/fl-mcp-production-flow/evals/evals.json >/dev/null
+npx skills add . --skill fl-mcp-production-flow --list
+```
+
+Use the configured `skill-creator` audit for full skill quality scoring. If a
+centralized `wagents` harness also needs reconciliation, run `wagents` with an
+explicit agents repository root instead of auto-discovering this checkout.
+
 ## Governance
 
 - Public MCP surface changes must update the
@@ -239,6 +252,9 @@ pnpm --dir docs --ignore-workspace dev
 - Live bridge behavior changes must update the
   [bridge protocol](docs/content/docs/architecture/bridge-protocol.mdx) and the
   relevant `fl-bundle/` README.
+- Agent-skill changes under `skills/` must keep the skill package, evals,
+  README, release notes, and docs guidance aligned. Installable skills should be
+  previewed with `npx skills add . --skill <name> --list`.
 - Release-facing behavior changes should be recorded in
   [release notes](docs/content/docs/release-notes.mdx) and, for larger
   workstreams, the relevant `goals/` package.

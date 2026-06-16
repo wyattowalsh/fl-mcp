@@ -1,0 +1,109 @@
+{
+  "skill_name": "fl-mcp-production-flow",
+  "evals": [
+    {
+      "id": "empty-args-gallery",
+      "prompt": "/fl-mcp-production-flow",
+      "expected_output": "A setup-first gallery with examples for setup, plan, rehearse, execute, render, and audit modes.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to the empty-args handler.",
+        "Agent presents setup as the first recommended action.",
+        "Agent does not begin execution when no workflow is provided."
+      ]
+    },
+    {
+      "id": "explicit-setup-live",
+      "prompt": "/fl-mcp-production-flow setup live",
+      "expected_output": "A setup-mode response that runs or requests setup-check.py in live mode and reports readiness flags and missing steps.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Setup mode.",
+        "Agent uses scripts/setup-check.py with --mode live.",
+        "Agent reports safe_to_execute_mock and safe_to_attempt_live.",
+        "Agent does not mutate FL Studio."
+      ]
+    },
+    {
+      "id": "explicit-production-plan",
+      "prompt": "/fl-mcp-production-flow plan \"make a four-bar hardstyle loop\"",
+      "expected_output": "A non-mutating production workflow plan that starts with Setup Gate and uses compact MCP capability search and schema lookup.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Plan mode.",
+        "Agent runs or references the mandatory Setup Gate.",
+        "Agent includes fl_status or fl_snapshot orientation.",
+        "Agent includes fl_search_capabilities and fl_get_capability_schema before execution steps.",
+        "Agent includes readback or task verification."
+      ]
+    },
+    {
+      "id": "implicit-production-flow",
+      "prompt": "Use fl-mcp to load a synth, automate cutoff, render, and verify audio.",
+      "expected_output": "A setup-gated workflow that routes through plan or rehearse before execution and includes render/audio-analysis evidence requirements.",
+      "files": [],
+      "assertions": [
+        "Agent auto-invokes fl-mcp-production-flow.",
+        "Agent runs Setup Gate before execution.",
+        "Agent does not skip schema lookup.",
+        "Agent requires provider, bridge mode, task id, and readback or analysis evidence."
+      ]
+    },
+    {
+      "id": "negative-control-public-tool-change",
+      "prompt": "/fl-mcp-production-flow Add a FastMCP tool for mixer.set_track_volume",
+      "expected_output": "A redirect away from the skill because adding public MCP tools is runtime/API work.",
+      "files": [],
+      "assertions": [
+        "Agent recognizes this is a public MCP tool/runtime change.",
+        "Agent refuses to use this skill for the request.",
+        "Agent does not propose adding a visible primitive MCP tool."
+      ]
+    },
+    {
+      "id": "negative-control-ui-work",
+      "prompt": "/fl-mcp-production-flow Design a dashboard UI for FL MCP setup status",
+      "expected_output": "A redirect to frontend/UI skills because visual docs/app UI work is out of scope.",
+      "files": [],
+      "assertions": [
+        "Agent recognizes this is visual UI work.",
+        "Agent redirects to frontend/UI skills.",
+        "Agent does not provide UI implementation under this skill."
+      ]
+    },
+    {
+      "id": "negative-control-database-work",
+      "prompt": "/fl-mcp-production-flow Add a migration for persisted project setup state",
+      "expected_output": "A redirect to database-architect because schema and migration work is out of scope.",
+      "files": [],
+      "assertions": [
+        "Agent recognizes this is database/schema work.",
+        "Agent redirects to database-architect.",
+        "Agent does not generate migration code."
+      ]
+    },
+    {
+      "id": "negative-control-pipeline-work",
+      "prompt": "/fl-mcp-production-flow Design lineage and replay for rendered audio analytics ingestion",
+      "expected_output": "A redirect to data-pipeline-architect because ingestion, lineage, and replay are data-pipeline concerns.",
+      "files": [],
+      "assertions": [
+        "Agent recognizes this is data-pipeline architecture.",
+        "Agent redirects to data-pipeline-architect.",
+        "Agent does not design an ingestion pipeline under this skill."
+      ]
+    },
+    {
+      "id": "audit-result-evidence",
+      "prompt": "/fl-mcp-production-flow audit render result",
+      "expected_output": "An audit response that separates mock and live evidence and checks setup, provider, bridge, operation, request, task, and readback proof.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Audit mode.",
+        "Agent treats the mode as read-only.",
+        "Agent checks for setup JSON, provider, bridge mode, operation id, request id, task id, and readback or analysis evidence.",
+        "Agent reports missing evidence instead of claiming success."
+      ]
+    }
+  ]
+}
