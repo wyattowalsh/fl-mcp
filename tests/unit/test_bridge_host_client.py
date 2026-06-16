@@ -15,7 +15,7 @@ from typing import Any, cast
 
 import pytest
 
-from fl_mcp.bridge import controller_bridge
+from fl_mcp.bridge import controller_bridge, host_client
 from fl_mcp.bridge.bundle import _active_user_data_dir, bridge_runner_descriptor
 from fl_mcp.bridge.host_client import (
     DEFAULT_BRIDGE_DIR,
@@ -164,7 +164,22 @@ def test_file_bridge_client_waits_for_complete_response_file(tmp_path: Path) -> 
     assert not list(tmp_path.glob("response-*.json"))
 
 
-def test_file_bridge_client_times_out_when_fl_script_is_not_polling(tmp_path: Path) -> None:
+def test_file_bridge_client_times_out_when_fl_script_is_not_polling(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    snapshot_now = 1060.5
+    stale_updated_at = 1000.0
+    monkeypatch.setattr(host_client.time, "time", lambda: snapshot_now)
+    stale_status = {
+        "state": "ready",
+        "message": "old init",
+        "updated_at": stale_updated_at,
+        "poll_reason": "init",
+        "processed_request_count": 0,
+    }
+    (tmp_path / "status.json").write_text(json.dumps(stale_status), encoding="utf-8")
+
     response = run_file_bridge(
         BridgeLiveRequest(domain="transport", operation="get_state", provider="flapi-live"),
         bridge_dir=tmp_path,
@@ -175,6 +190,11 @@ def test_file_bridge_client_times_out_when_fl_script_is_not_polling(tmp_path: Pa
     assert response.success is False
     assert response.error_code == "fl_host_timeout"
     assert response.result["bridge_dir"] == str(tmp_path)
+    status = cast(dict[str, object], response.result["status"])
+    assert status["state"] == "ready"
+    assert status["poll_reason"] == "init"
+    assert status["age_seconds"] == pytest.approx(snapshot_now - stale_updated_at)
+    assert "Select the FL MCP Bridge controller" in str(response.result["remediation"])
     assert not list(tmp_path.glob("request-*.json"))
 
 
@@ -615,6 +635,102 @@ def test_fl_controller_script_logging_is_opt_in(
     module._log("enabled")
 
     assert "enabled" in (tmp_path / "fl_mcp_bridge.log").read_text(encoding="utf-8")
+
+
+def test_fl_controller_script_poll_status_includes_runtime_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", str(tmp_path))
+    cast(Any, module)._last_status_at = 0.0
+    cast(Any, module)._processed_request_count = 7
+    cast(Any, module)._last_bridge_error = "api_missing: unavailable"
+
+    module._poll("test", force=True)
+
+    status = json.loads((tmp_path / "status.json").read_text(encoding="utf-8"))
+    assert status["state"] == "ready"
+    assert status["message"] == "FL MCP Bridge MIDI script polling."
+    assert status["poll_reason"] == "test"
+    assert status["processed_request_count"] == 7
+    assert status["processed_request"] is False
+    assert status["last_error"] == "api_missing: unavailable"
+    assert isinstance(status["last_poll_at"], float)
+
+
+def test_fl_controller_script_extra_callbacks_delegate_to_poller(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    calls: list[tuple[str, bool]] = []
+
+    def poll(reason: str, *, force: bool = False) -> None:
+        calls.append((reason, force))
+
+    monkeypatch.setattr(module, "_poll", poll)
+
+    module.OnIdle()
+    module.OnRefresh(1)
+    module.OnUpdateBeatIndicator(1)
+    module.OnDirtyMixerTrack(2)
+    module.OnMidiMsg(SimpleNamespace(handled=False))
+
+    assert calls == [
+        ("idle", False),
+        ("refresh", False),
+        ("beat", False),
+        ("mixer", False),
+        ("midi", False),
+    ]
+
+
+def test_fl_controller_script_poll_rate_limit_and_heartbeat_interval(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    monotonic_now = {"value": 100.0}
+    wall_now = {"value": 1000.0}
+    process_calls: list[str] = []
+    status_writes: list[tuple[str, bool]] = []
+
+    def process_one_request() -> bool:
+        process_calls.append("processed")
+        return False
+
+    def write_poll_status(reason: str, *, processed: bool) -> None:
+        status_writes.append((reason, processed))
+
+    monkeypatch.setattr(module.time, "monotonic", lambda: monotonic_now["value"])
+    monkeypatch.setattr(module.time, "time", lambda: wall_now["value"])
+    monkeypatch.setattr(module, "_process_one_request", process_one_request)
+    monkeypatch.setattr(module, "_write_poll_status", write_poll_status)
+
+    module._poll("idle", force=True)
+
+    assert len(process_calls) == 1
+    assert status_writes == [("idle", False)]
+
+    monotonic_now["value"] += module.MIN_POLL_INTERVAL_SECONDS / 2
+    wall_now["value"] += 0.1
+    module._poll("idle")
+
+    assert len(process_calls) == 1
+    assert status_writes == [("idle", False)]
+
+    monotonic_now["value"] += module.MIN_POLL_INTERVAL_SECONDS * 2
+    wall_now["value"] = 1000.0 + module.STATUS_HEARTBEAT_INTERVAL_SECONDS - 0.1
+    module._poll("idle")
+
+    assert len(process_calls) == 2
+    assert status_writes == [("idle", False)]
+
+    monotonic_now["value"] += module.MIN_POLL_INTERVAL_SECONDS * 2
+    wall_now["value"] = 1000.0 + module.STATUS_HEARTBEAT_INTERVAL_SECONDS + 0.1
+    module._poll("idle")
+
+    assert len(process_calls) == 3
+    assert status_writes == [("idle", False), ("idle", False)]
 
 
 def test_fl_controller_script_defaults_bridge_dir_next_to_script(

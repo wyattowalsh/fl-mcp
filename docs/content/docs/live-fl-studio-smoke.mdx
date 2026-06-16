@@ -50,8 +50,10 @@ uvx \
 
 ## Smoke Sequence
 
-1. Confirm the DAW-side script wrote `status.json` with `state="ready"` in the
-   reported bridge directory.
+1. Confirm the DAW-side script wrote `status.json` in the reported bridge
+   directory. Active polling evidence requires `state="ready"`, a non-`deinit`
+   `poll_reason`, and an `updated_at` value that continues to refresh while FL
+   Studio is open.
 2. Call `fl_status` and confirm live bridge configuration is visible.
 3. Search for a known live operation:
 
@@ -81,6 +83,8 @@ uvx \
 - Request id if available.
 - Before and after readback values.
 - Any request/response files left for diagnostics.
+- `status.json` freshness, `state`, `poll_reason`, `processed_request`, and
+  `processed_request_count`.
 - `fl_mcp_bridge.log` only when `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` was enabled.
 
 ## Timeout Interpretation
@@ -89,6 +93,14 @@ If the installer-reported bridge directory stays empty after a timeout and
 `status.json` is missing or stale, treat that as evidence that FL Studio did not
 initialize or poll the script in that session. The next step is controller
 selection or reload inside FL Studio, not another server-side patch.
+
+If `status.json` exists but `updated_at` does not refresh while FL Studio is
+open, the bundled script is installed but is not the active polling controller
+for that session.
+
+`processed_request_count` is audit context and can remain unchanged during idle
+heartbeat polling. Use `processed_request` to see whether a specific heartbeat
+handled a request.
 
 If the Welcome window is open, close it and wait for `OnInit` before retrying.
 The MCP-side `host_client` performs request/response cleanup; after it returns,

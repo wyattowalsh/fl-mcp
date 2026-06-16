@@ -23,6 +23,7 @@ LOG_ENV = "FL_MCP_FL_STUDIO_BRIDGE_LOG"
 STATUS_FILE = "status.json"
 SCRIPT_LOG_FILE = "fl_mcp_bridge.log"
 MIN_POLL_INTERVAL_SECONDS = 0.02
+STATUS_HEARTBEAT_INTERVAL_SECONDS = 5.0
 PROCESSED_REQUEST_TTL_SECONDS = 120.0
 MAX_PROCESSED_REQUESTS = 512
 _PRIVATE_DIR_MODE = 0o700
@@ -58,6 +59,9 @@ transport = _FL_MODULES["transport"]
 ui = _FL_MODULES["ui"]
 
 _last_poll_at = 0.0
+_last_status_at = 0.0
+_processed_request_count = 0
+_last_bridge_error = None
 _processed_request_paths = {}
 
 
@@ -658,17 +662,20 @@ def _handle_request(request: dict) -> dict:
     return _execute_forced_live_adapter(request, payload)
 
 
-def _write_status(state: str, message: str) -> None:
+def _write_status(state: str, message: str, extra: dict | None = None) -> None:
     try:
         bridge_dir = _ensure_private_bridge_dir(_bridge_dir())
+        payload = {
+            "state": state,
+            "message": message,
+            "bridge_dir": bridge_dir,
+            "updated_at": time.time(),
+        }
+        if extra:
+            payload.update(extra)
         _write_json_atomic(
             os.path.join(bridge_dir, STATUS_FILE),
-            {
-                "state": state,
-                "message": message,
-                "bridge_dir": bridge_dir,
-                "updated_at": time.time(),
-            },
+            payload,
         )
         _log(f"status {state}: {message} bridge_dir={bridge_dir}")
     except Exception as exc:
@@ -697,9 +704,11 @@ def _remember_processed_request(request_path: str) -> None:
 
 
 def _process_one_request() -> bool:
+    global _processed_request_count, _last_bridge_error
     try:
         bridge_dir = _ensure_private_bridge_dir(_bridge_dir())
     except Exception as exc:
+        _last_bridge_error = f"{type(exc).__name__}: {exc}"
         _log(f"bridge directory unavailable: {type(exc).__name__}: {exc}")
         return False
     try:
@@ -709,6 +718,7 @@ def _process_one_request() -> bool:
             if name.startswith("request-") and name.endswith(".json") and not name.endswith(".tmp")
         )
     except OSError as exc:
+        _last_bridge_error = f"{type(exc).__name__}: {exc}"
         _log(f"request scan failed: {type(exc).__name__}: {exc}")
         return False
     request_paths = _unseen_request_paths(request_paths)
@@ -740,27 +750,90 @@ def _process_one_request() -> bool:
     try:
         _write_json_atomic(os.path.join(bridge_dir, f"response-{request_id}.json"), response)
     except Exception as exc:
+        _last_bridge_error = f"{type(exc).__name__}: {exc}"
         _log(f"response write failed for {request_id}: {type(exc).__name__}: {exc}")
         return False
     _remember_processed_request(request_path)
+    _processed_request_count += 1
+    if response.get("success"):
+        _last_bridge_error = None
+    else:
+        _last_bridge_error = f"{response.get('error_code')}: {response.get('message')}"
     _log(f"processed request {request_id}: success={response.get('success')}")
     return True
 
 
+def _write_poll_status(reason: str, *, processed: bool) -> None:
+    _write_status(
+        "ready",
+        "FL MCP Bridge MIDI script polling.",
+        {
+            "poll_reason": reason,
+            "last_poll_at": time.time(),
+            "processed_request_count": _processed_request_count,
+            "processed_request": bool(processed),
+            "last_error": _last_bridge_error,
+        },
+    )
+
+
+def _poll(reason: str, *, force: bool = False) -> None:
+    global _last_poll_at, _last_status_at
+    now = time.monotonic()
+    if not force and now - _last_poll_at < MIN_POLL_INTERVAL_SECONDS:
+        return
+    _last_poll_at = now
+    processed = _process_one_request()
+
+    wall_now = time.time()
+    if processed or wall_now - _last_status_at >= STATUS_HEARTBEAT_INTERVAL_SECONDS:
+        _last_status_at = wall_now
+        _write_poll_status(reason, processed=processed)
+
+
 def OnInit():  # noqa: N802 - FL Studio requires this callback name.
+    global _last_status_at
     _log("OnInit")
-    _write_status("ready", "FL MCP Bridge MIDI script initialized.")
+    _last_status_at = time.time()
+    _write_status(
+        "ready",
+        "FL MCP Bridge MIDI script initialized.",
+        {
+            "poll_reason": "init",
+            "processed_request_count": _processed_request_count,
+            "last_error": _last_bridge_error,
+        },
+    )
 
 
 def OnDeInit():  # noqa: N802 - FL Studio requires this callback name.
     _log("OnDeInit")
-    _write_status("stopped", "FL MCP Bridge MIDI script stopped.")
+    _write_status(
+        "stopped",
+        "FL MCP Bridge MIDI script stopped.",
+        {
+            "poll_reason": "deinit",
+            "processed_request_count": _processed_request_count,
+            "last_error": _last_bridge_error,
+        },
+    )
 
 
 def OnIdle():  # noqa: N802 - FL Studio requires this callback name.
-    global _last_poll_at
-    now = time.monotonic()
-    if now - _last_poll_at < MIN_POLL_INTERVAL_SECONDS:
-        return
-    _last_poll_at = now
-    _process_one_request()
+    _poll("idle")
+
+
+def OnRefresh(flags=0):  # noqa: N802 - FL Studio requires this callback name.
+    _poll("refresh")
+
+
+def OnUpdateBeatIndicator(value=0):  # noqa: N802 - FL Studio requires this callback name.
+    _poll("beat")
+
+
+def OnDirtyMixerTrack(track=-1):  # noqa: N802 - FL Studio requires this callback name.
+    _poll("mixer")
+
+
+def OnMidiMsg(event=None):  # noqa: N802 - FL Studio requires this callback name.
+    _poll("midi")

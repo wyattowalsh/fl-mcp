@@ -3,6 +3,17 @@ title: Release Notes
 description: Documentation-centric release notes.
 ---
 
+## 2026-06-16 - Bridge Liveness Evidence
+
+- Updated the bundled FL Studio MIDI script to refresh `status.json` with
+  rate-limited polling heartbeat metadata while the controller is active.
+- Added polling reason, processed-request state, processed-request count, and
+  last-error context so live bridge timeouts can distinguish an unselected
+  controller from an idle but active bridge.
+- Included `status.json` snapshots and remediation guidance in host-client
+  timeout and invalid-response results without changing the compact public MCP
+  tool surface.
+
 ## 2026-06-16 - FL MCP Production Flow Agent Skill
 
 - Added the repo-local `fl-mcp-production-flow` agent skill for setup-first FL

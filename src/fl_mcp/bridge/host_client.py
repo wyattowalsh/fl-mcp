@@ -20,6 +20,7 @@ POLL_INTERVAL_ENV = "FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS"
 DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 DEFAULT_FILE_BRIDGE_TIMEOUT_SECONDS = 15.0
 _PRIVATE_DIR_MODE = 0o700
+STATUS_FILE_NAME = "status.json"
 
 
 class FileBridgeEnvelope(BaseModel):
@@ -102,6 +103,30 @@ def _read_response(path: Path) -> BridgeLiveResponse:
     return BridgeLiveResponse.model_validate(decoded)
 
 
+def _bridge_status_snapshot(request_dir: Path) -> dict[str, object] | None:
+    status_path = request_dir / STATUS_FILE_NAME
+    if not status_path.exists():
+        return None
+    try:
+        decoded = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {
+            "path": str(status_path),
+            "read_error": f"{type(exc).__name__}: {exc}",
+        }
+    if not isinstance(decoded, dict):
+        return {
+            "path": str(status_path),
+            "read_error": "status.json did not contain a JSON object",
+        }
+    snapshot = {str(key): value for key, value in decoded.items()}
+    snapshot["path"] = str(status_path)
+    updated_at = snapshot.get("updated_at")
+    if isinstance(updated_at, int | float):
+        snapshot["age_seconds"] = max(0.0, time.time() - float(updated_at))
+    return snapshot
+
+
 def run_file_bridge(
     request: BridgeLiveRequest,
     *,
@@ -168,6 +193,7 @@ def run_file_bridge(
                 "bridge_dir": str(request_dir),
                 "request_id": request_id,
                 "response_path": str(response_path),
+                "status": _bridge_status_snapshot(request_dir),
             },
         )
     return _response(
@@ -179,7 +205,15 @@ def run_file_bridge(
             f"Ensure the FL MCP Bridge MIDI script is enabled and polling {request_dir}."
         ),
         execution_id=f"filebridge-{request_id}",
-        result={"bridge_dir": str(request_dir), "request_id": request_id},
+        result={
+            "bridge_dir": str(request_dir),
+            "request_id": request_id,
+            "status": _bridge_status_snapshot(request_dir),
+            "remediation": (
+                "Select the FL MCP Bridge controller in FL Studio MIDI Settings "
+                "and confirm status.json updated_at refreshes while FL is open."
+            ),
+        },
     )
 
 

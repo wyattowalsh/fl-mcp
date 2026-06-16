@@ -57,8 +57,10 @@ checkout path and add `--with-editable /absolute/path/to/fl-mcp`. Install
 `fl-bundle/controller/device_FL_MCP_Bridge.py` under the
 reported FL Studio `Settings/Hardware/FL MCP Bridge/` directory and select
 `FL MCP Bridge` in MIDI Settings. The script polls the bridge directory from
-`OnIdle`, dispatches the shipped `general_*` and safe `transport_*` live
-operations, and writes the response file consumed by `host_client`.
+FL Studio's MIDI callbacks, primarily `OnIdle` with additional lightweight
+callback hooks for refresh, beat, mixer, and MIDI events. It dispatches the
+shipped `general_*` and safe `transport_*` live operations, then writes the
+response file consumed by `host_client`.
 
 The bundled script declares `# supportedDevices=FL MCP Bridge,IAC Driver Bus 1`
 so the local virtual IAC MIDI device used by the actual-app smoke path can list
@@ -74,7 +76,13 @@ file writes work. For that default script-local directory only, the MIDI script
 continues with the MCP-side `host_client` owning the private-directory check.
 Set `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` before launching FL Studio if you need a
 persistent `fl_mcp_bridge.log` for diagnostics. Explicit environment override
-directories remain strict and fail closed.
+directories remain strict and fail closed. Even without persistent logging,
+`status.json` is updated on initialization, shutdown, processed requests, and a
+rate-limited polling heartbeat. Active polling evidence requires
+`state="ready"`, a non-`deinit` `poll_reason`, and an `updated_at` value that
+continues to refresh while FL Studio is open. `processed_request_count` is audit
+context and may stay unchanged during idle heartbeats; `processed_request`
+reports whether a specific heartbeat handled a request.
 
 The file-queue envelope written by `host_client` is:
 

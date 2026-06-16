@@ -9,7 +9,8 @@ This bundle exposes the repo-owned FL Studio bridge command used by
   inside the DAW Python host.
 - Close FL Studio's Welcome window before expecting the MIDI script to
   initialize. The script writes `status.json` to its script-local `bridge/`
-  directory when ready.
+  directory when ready, and refreshes it with rate-limited polling heartbeat
+  metadata while the script is actively selected.
 - `python -m fl_mcp.bridge.host_client` is the MCP-side bridge command. It
   accepts the MCP JSON request as `argv[1]`, writes a request file, waits for the
   MIDI script response file, and prints one JSON response to stdout.
@@ -18,7 +19,7 @@ This bundle exposes the repo-owned FL Studio bridge command used by
   normal direct file writes succeed.
 - The MIDI script keeps persistent `fl_mcp_bridge.log` logging disabled by
   default. Set `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` only for diagnostics; `status.json`
-  remains the normal readiness signal.
+  remains the normal readiness and liveness signal.
 - `fl_mcp_bridge_runner.py` remains a thin wrapper around the packaged
   `fl_mcp.bridge.runner` module for direct host diagnostics.
 - Use `python -m fl_mcp.bridge.runner --mode harness` for deterministic
