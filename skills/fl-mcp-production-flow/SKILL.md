@@ -33,6 +33,30 @@ Canonical terms (use these exactly):
 | **evidence bundle** | Setup JSON plus provider, bridge, operation, request, task, and readback proof |
 | **degraded setup** | Setup check is blocked but Plan mode may continue with exact missing steps |
 
+## Gallery
+
+Invoke the skill with **no arguments** (`/fl-mcp-production-flow`) to show this
+gallery. Every example starts with setup; none begin live mutation without an
+explicit workflow.
+
+| Example | Mode | Safe entry command |
+| --- | --- | --- |
+| First-time readiness | Setup | `/fl-mcp-production-flow setup mock` |
+| Live bridge readiness | Setup | `/fl-mcp-production-flow setup live` |
+| Sketch a beat workflow | Plan | `/fl-mcp-production-flow plan "four-bar hardstyle loop"` |
+| Mock rehearsal before live | Rehearse | `/fl-mcp-production-flow rehearse transport-tempo-mock` |
+| Live transport change | Execute | `/fl-mcp-production-flow execute transport-set-tempo-live` |
+| Export with task evidence | Render | `/fl-mcp-production-flow render master-wav` |
+| Inspect prior proof | Audit | `/fl-mcp-production-flow audit render result` |
+
+Gallery rules:
+
+1. Recommend **Setup** first for empty invocations.
+2. Default new production requests to **Plan** or **Rehearse** unless live
+   intent is explicit.
+3. Never claim DAW mutation from mock evidence.
+4. Redirect runtime/API, database, pipeline, and UI requests out of this skill.
+
 ## Dispatch
 
 | `$ARGUMENTS` | Mode | Action |

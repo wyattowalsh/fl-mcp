@@ -1,0 +1,30 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "getting-started",
+    "installation",
+    "concepts",
+    "---Workflows---",
+    "operation-workflows",
+    "ai-workflows-agent-teams",
+    "live-fl-studio-smoke",
+    "---Validation---",
+    "validation-runbook",
+    "validation/tier-b-release",
+    "---Reference---",
+    "providers",
+    "clients",
+    "architecture",
+    "reference",
+    "adr",
+    "---Project---",
+    "helper-app",
+    "comparison-existing-servers",
+    "roadmap",
+    "release-notes",
+    "troubleshooting",
+    "contributing"
+  ]
+}

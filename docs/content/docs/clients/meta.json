@@ -1,0 +1,10 @@
+{
+  "title": "Clients",
+  "pages": [
+    "index",
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "github-copilot"
+  ]
+}

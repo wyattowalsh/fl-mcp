@@ -97,13 +97,13 @@ def test_live_harness_runs_through_fl_tool_contracts(monkeypatch: pytest.MonkeyP
     [
         (
             "fl_render",
-            {"output_path": "native-task-render.wav", "provider": "mock"},
+            {"output_path": "mock://native-task-render.wav", "provider": "mock"},
             "job_id",
             surface_resources.render_job,
         ),
         (
             "fl_analyze_audio",
-            {"input_path": "native-task-audio.wav", "provider": "mock"},
+            {"input_path": "mock://native-task-audio.wav", "provider": "mock"},
             "analysis_id",
             surface_resources.audio_analysis,
         ),
@@ -188,8 +188,8 @@ def test_compact_task_entrypoints_attempt_live_backend_in_live_mode(
         compact, "get_provider_registry", lambda load_entry_points=False: Registry()
     )
 
-    render = compact.fl_render({"output_path": "mix.wav"})
-    analysis = compact.fl_analyze_audio({"input_path": "mix.wav"})
+    render = compact.fl_render({"output_path": "mock://mix.wav"})
+    analysis = compact.fl_analyze_audio({"input_path": "mock://mix.wav"})
 
     assert render["status"] == "error"
     render_result = cast(dict[str, object], render["result"])

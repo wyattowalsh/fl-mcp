@@ -173,7 +173,22 @@ class TestServerRunDryRun:
         assert data["action"] == "server.run"
         assert data["runtime"]["surface"] == "compact"
 
-    def test_production_http_requires_auth_token(
+    def test_server_run_dry_run_uses_settings_http_host_and_port(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from fl_mcp.config.settings import settings
+
+        monkeypatch.setattr(settings, "http_host", "127.0.0.2")
+        monkeypatch.setattr(settings, "http_port", 9001)
+        rc = main(["server", "run", "--mode", "http", "--dry-run"])
+        assert rc == 0
+        data = json.loads(capsys.readouterr().out)
+        assert data["http"]["host"] == "127.0.0.2"
+        assert data["http"]["port"] == 9001
+
+    def test_http_requires_auth_token_in_all_environments(
         self,
         capsys: pytest.CaptureFixture[str],
         monkeypatch: pytest.MonkeyPatch,
@@ -181,9 +196,13 @@ class TestServerRunDryRun:
         from fl_mcp.config.settings import settings
 
         monkeypatch.setattr(settings, "auth_token", None)
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", False)
         rc = main(["server", "run", "--mode", "http", "--environment", "production"])
         assert rc == 2
-        assert "FL_MCP_AUTH_TOKEN is required" in capsys.readouterr().out
+        assert "FL_MCP_AUTH_TOKEN is required for HTTP mode" in capsys.readouterr().out
+
+        rc = main(["server", "run", "--mode", "http", "--environment", "dev"])
+        assert rc == 2
 
     def test_production_http_dry_run_does_not_require_auth_token(
         self,

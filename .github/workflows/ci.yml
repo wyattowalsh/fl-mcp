@@ -36,10 +36,21 @@ jobs:
       - name: Run test suite
         run: uv run pytest -q tests/${{ matrix.suite }}
         shell: bash
-      - name: Run test suite with coverage
-        if: matrix.suite != 'benchmarks'
-        run: uv run pytest --cov=fl_mcp --cov-report=term-missing --ignore=tests/benchmarks tests/${{ matrix.suite }}
-        shell: bash
+
+  coverage:
+    name: Coverage gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405  # v6.2.0
+        with:
+          python-version: '3.12'
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev --locked
+      - name: Run full test suite with coverage gate
+        run: uv run pytest --cov=fl_mcp --cov-report=term-missing -q
 
   docs:
     name: Docs build

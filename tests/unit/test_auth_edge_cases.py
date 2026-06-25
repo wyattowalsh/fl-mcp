@@ -15,6 +15,7 @@ from fl_mcp.auth.token import (
     check_auth_context,
     check_token,
 )
+from fl_mcp.cli.main import main
 from fl_mcp.config.settings import settings
 
 # ---------------------------------------------------------------------------
@@ -302,3 +303,92 @@ class TestEmptyStringToken:
         monkeypatch.setattr(settings, "auth_token", None)
         # Empty string context yields invalid token → deny=True → False
         assert check_auth_context("") is False
+
+
+# ---------------------------------------------------------------------------
+# HTTP mode auth policy
+# ---------------------------------------------------------------------------
+
+
+class TestHttpModeAuthPolicy:
+    """HTTP transport requires auth unless explicitly opted out."""
+
+    def test_http_mode_requires_auth_token_by_default(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings, "auth_token", None)
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", False)
+
+        rc = main(["server", "run", "--mode", "http", "--environment", "dev"])
+        assert rc == 2
+        assert "FL_MCP_AUTH_TOKEN is required for HTTP mode" in capsys.readouterr().out
+
+    def test_http_mode_allows_local_opt_out(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings, "auth_token", None)
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", True)
+        monkeypatch.setattr("fl_mcp.cli.server.run_streamable_http", lambda *_args, **_kwargs: None)
+
+        rc = main(["server", "run", "--mode", "http", "--environment", "dev"])
+        assert rc == 0
+
+    def test_http_mode_opt_out_requires_loopback_host(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings, "auth_token", None)
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", True)
+
+        rc = main(
+            [
+                "server",
+                "run",
+                "--mode",
+                "http",
+                "--host",
+                "0.0.0.0",
+                "--environment",
+                "dev",
+            ]
+        )
+
+        assert rc == 2
+        assert "loopback HTTP host" in capsys.readouterr().out
+
+    def test_http_mode_opt_out_allows_loopback_host(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings, "auth_token", None)
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", True)
+        monkeypatch.setattr("fl_mcp.cli.server.run_streamable_http", lambda *_args, **_kwargs: None)
+
+        rc = main(
+            [
+                "server",
+                "run",
+                "--mode",
+                "http",
+                "--host",
+                "127.0.0.1",
+                "--environment",
+                "dev",
+            ]
+        )
+        assert rc == 0
+
+    def test_http_mode_with_auth_token_starts(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(settings, "auth_token", "secret")
+        monkeypatch.setattr(settings, "http_allow_unauthenticated", False)
+        monkeypatch.setattr("fl_mcp.cli.server.run_streamable_http", lambda *_args, **_kwargs: None)
+
+        rc = main(["server", "run", "--mode", "http", "--environment", "production"])
+        assert rc == 0

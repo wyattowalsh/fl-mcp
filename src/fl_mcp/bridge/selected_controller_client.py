@@ -12,6 +12,15 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from fl_mcp.bridge.bundle import _active_user_data_dir
+from fl_mcp.bridge.host_client import (
+    _completed_cache_path,
+    _invalid_idempotency_key_response,
+    _lookup_completed_cache_response,
+    _request_fingerprint,
+    _sanitize_idempotency_key,
+    _write_completed_cache,
+    ensure_private_bridge_dir,
+)
 from fl_mcp.schemas.bridge import BridgeLiveRequest, BridgeLiveResponse
 
 SELECTED_CONTROLLER_DIR_ENV = "FL_MCP_SELECTED_CONTROLLER_DIR"
@@ -19,6 +28,55 @@ POLL_INTERVAL_ENV = "FL_MCP_SELECTED_CONTROLLER_POLL_SECONDS"
 DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 DEFAULT_SELECTED_CONTROLLER_TIMEOUT_SECONDS = 5.0
 LOCK_FILE_NAME = ".mcp_command.lock"
+_STALE_LOCK_MAX_AGE_SECONDS = 60.0
+
+
+def _process_is_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _parse_lock_metadata(path: Path) -> tuple[int | None, float | None]:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError:
+        return None, None
+
+    pid: int | None = None
+    created_at: float | None = None
+    for token in content.strip().split():
+        if token.startswith("pid="):
+            try:
+                pid = int(token.removeprefix("pid="))
+            except ValueError:
+                pid = None
+        elif token.startswith("created_at="):
+            try:
+                created_at = float(token.removeprefix("created_at="))
+            except ValueError:
+                created_at = None
+    return pid, created_at
+
+
+def _lock_is_stale(path: Path) -> bool:
+    pid, created_at = _parse_lock_metadata(path)
+    if pid is not None and not _process_is_alive(pid):
+        return True
+    if created_at is not None and (time.time() - created_at) > _STALE_LOCK_MAX_AGE_SECONDS:
+        return True
+    try:
+        return (time.time() - path.stat().st_mtime) > _STALE_LOCK_MAX_AGE_SECONDS
+    except OSError:
+        return True
 
 
 class _SelectedControllerLock:
@@ -33,6 +91,12 @@ class _SelectedControllerLock:
             try:
                 fd = os.open(self._path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
             except FileExistsError:
+                if _lock_is_stale(self._path):
+                    try:
+                        self._path.unlink()
+                    except FileNotFoundError:
+                        pass
+                    continue
                 time.sleep(self._poll_interval_seconds)
                 continue
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
@@ -890,17 +954,36 @@ def run_selected_controller_bridge(
             ),
         )
 
-    bridge_dir = controller_dir or selected_controller_dir_from_environment()
-    command_path = bridge_dir / "mcp_command.json"
-    response_path = bridge_dir / "mcp_response.json"
-    if not bridge_dir.exists():
+    if request.idempotency_key is not None and _sanitize_idempotency_key(request.idempotency_key) is None:
+        return _invalid_idempotency_key_response(request)
+
+    idempotency_key = _sanitize_idempotency_key(request.idempotency_key)
+    fingerprint = _request_fingerprint(request) if idempotency_key else None
+
+    requested_dir = controller_dir or selected_controller_dir_from_environment()
+    try:
+        bridge_dir = ensure_private_bridge_dir(requested_dir)
+    except ValueError as exc:
         return _response(
             request,
             success=False,
-            error_code="selected_controller_missing",
-            message=f"Selected FL Studio controller directory does not exist: {bridge_dir}.",
-            result={"controller_dir": str(bridge_dir)},
+            error_code="bridge_dir_insecure",
+            message=str(exc),
+            result={"controller_dir": str(requested_dir.expanduser())},
         )
+
+    command_path = bridge_dir / "mcp_command.json"
+    response_path = bridge_dir / "mcp_response.json"
+
+    if idempotency_key and fingerprint is not None:
+        completed_hit = _lookup_completed_cache_response(
+            request,
+            bridge_dir=bridge_dir,
+            request_id=idempotency_key,
+            fingerprint=fingerprint,
+        )
+        if completed_hit is not None:
+            return completed_hit
 
     execution_id = f"selected-controller-{uuid.uuid4().hex}"
     poll_interval = poll_interval_seconds or _poll_interval_from_environment()
@@ -949,11 +1032,18 @@ def run_selected_controller_bridge(
                 break
             decoded_items.append(decoded)
         if len(decoded_items) == len(commands):
-            return _normalize_sequence_response(
+            response = _normalize_sequence_response(
                 request,
                 decoded_items,
                 execution_id=execution_id,
             )
+            if response.success and idempotency_key and fingerprint is not None:
+                _write_completed_cache(
+                    _completed_cache_path(bridge_dir, idempotency_key),
+                    fingerprint=fingerprint,
+                    response=response,
+                )
+            return response
 
         return _response(
             request,

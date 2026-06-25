@@ -1,5 +1,7 @@
 """Settings models."""
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,9 +33,22 @@ class Settings(BaseSettings):
     app_name: str = "fl-mcp"
     log_level: str = "INFO"
     auth_token: str | None = None
+    http_allow_unauthenticated: bool = Field(
+        default=False,
+        description=(
+            "Allow streamable HTTP mode without FL_MCP_AUTH_TOKEN for local development."
+        ),
+    )
     http_host: str = "127.0.0.1"
     http_port: int = Field(default=8765, ge=1, le=65535)
     database_url: str = "sqlite:///fl_mcp.db"
+    safety_mode: Literal["strict", "standard"] = Field(
+        default="standard",
+        description=(
+            "Server-wide safety policy: 'standard' allows destructive operations, "
+            "'strict' blocks destructive and unknown operations."
+        ),
+    )
 
 
 settings = Settings()

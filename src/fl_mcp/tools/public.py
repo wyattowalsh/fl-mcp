@@ -9,6 +9,7 @@ from typing import cast
 from pydantic import ValidationError
 
 from fl_mcp.graph.model import ProjectGraph
+from fl_mcp.middleware.safety import SafetyModeError
 from fl_mcp.providers.runtime import get_provider_registry
 from fl_mcp.runtime.state import get_runtime_state
 from fl_mcp.schemas import TransactionEnvelope
@@ -95,7 +96,7 @@ def plan_changes(envelope: TransactionEnvelope) -> dict[str, object]:
     """
     try:
         return plan_engine(envelope).model_dump()
-    except (ValidationError, TypeError, AttributeError) as exc:
+    except (ValidationError, TypeError, AttributeError, SafetyModeError) as exc:
         logger.warning("Validation error in plan_changes: %s", exc, exc_info=True)
         return {"status": "error", "tool": "plan_changes", "error": str(exc)}
 
@@ -111,7 +112,7 @@ def apply_changes(envelope: TransactionEnvelope) -> dict[str, object]:
     """
     try:
         return apply_engine(envelope).model_dump()
-    except (ValidationError, TypeError, AttributeError) as exc:
+    except (ValidationError, TypeError, AttributeError, SafetyModeError) as exc:
         logger.warning("Validation error in apply_changes: %s", exc, exc_info=True)
         return {"status": "error", "tool": "apply_changes", "error": str(exc)}
 

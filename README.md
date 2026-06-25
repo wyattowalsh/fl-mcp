@@ -62,17 +62,30 @@
 | ![Layers][icon-layers] | Visible MCP tools | 12 compact FastMCP tools |
 | ![Activity][icon-activity] | Internal operations | 216 typed FL Studio operations |
 | ![Music][icon-music] | FL Studio domains | 16 domains |
-| ![Book][icon-book-open] | Read model | 5 resources and 3 resource templates |
-| ![Terminal][icon-terminal] | Default mode | Deterministic mock catalog |
-| ![Plug][icon-plug] | Live mode | Host-file bridge plus bundled MIDI script |
+| ![Book][icon-book-open] | Read model | 5 resources, 3 templates, 8 prompts |
+| ![Terminal][icon-terminal] | Default mode | Deterministic mock catalog (216 ops) |
+| ![Plug][icon-plug] | Live mode | 8 verified + 208 attemptable on bundled bridge |
+| ![Shield][icon-shield-check] | Providers | `mock`, `flapi-live`, `piano-roll-script`, `midi-fallback` |
 | ![uv][icon-uv] | Package manager | `uv` |
 | ![Book][icon-book-open] | Docs app | Nested Fumadocs + Next.js package |
 
-Mock mode covers the complete internal catalog for local and CI validation.
-In live mode, `provider="auto"` resolves to `flapi-live` for every catalog
-operation. The packaged bridge has verified coverage for a small smoke-safe
-subset, and all remaining operations are forced-live `attemptable` calls that
-return structured errors instead of falling back to mock.
+Mock mode covers the complete **216-operation** internal catalog for local and
+CI validation. In live mode, `provider="auto"` resolves to `flapi-live` for
+every catalog operation and does **not** silently fall back to mock.
+
+> [!IMPORTANT]
+> **Verified vs attemptable live coverage**
+>
+> - **Verified live (8 ops):** `general.get_version`, `general.get_project_title`,
+>   `transport.get_tempo`, `transport.get_state`, `transport.set_tempo`,
+>   `transport.play`, `transport.pause`, `transport.stop`.
+> - **Attemptable live (208 ops):** remaining catalog operations that may return
+>   structured `api_missing`, `unsupported_host_behavior`, `path_unavailable`, or
+>   `host_exception` results when FL Studio does not expose a compatible callable.
+>
+> The public surface also includes **8 workflow prompts** and **4 providers**.
+> See [Tier B release runbook](docs/content/docs/validation/tier-b-release.mdx)
+> for operator gates.
 
 ## Agent Control Loop
 

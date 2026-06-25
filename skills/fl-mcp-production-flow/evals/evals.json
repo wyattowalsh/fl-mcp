@@ -25,6 +25,43 @@
       ]
     },
     {
+      "id": "explicit-rehearse-mock",
+      "prompt": "/fl-mcp-production-flow rehearse \"verify transport tempo in mock mode\"",
+      "expected_output": "A rehearse-mode response that requires mock setup readiness and uses provider=\"mock\" with capability search and schema lookup before execution.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Rehearse mode.",
+        "Agent requires safe_to_execute_mock from setup-check.py.",
+        "Agent uses fl_search_capabilities and fl_get_capability_schema.",
+        "Agent executes with provider=\"mock\" and does not claim live DAW changes."
+      ]
+    },
+    {
+      "id": "explicit-execute-live",
+      "prompt": "/fl-mcp-production-flow execute \"set tempo to 150 in live FL Studio\"",
+      "expected_output": "An execute-mode response that requires live setup readiness, explicit live intent, schema lookup, and live provider evidence before claiming success.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Execute mode.",
+        "Agent runs Setup Gate with live setup-check when live intent is present.",
+        "Agent fetches schema before fl_execute or fl_apply.",
+        "Agent captures provider, bridge mode, operation id, request id, and readback evidence.",
+        "Agent stops with missing_steps when live setup is blocked."
+      ]
+    },
+    {
+      "id": "explicit-render-export",
+      "prompt": "/fl-mcp-production-flow render \"bounce the current loop to WAV\"",
+      "expected_output": "A render-mode workflow that uses fl_render, records task id and status, and verifies completion through task resources or follow-up status.",
+      "files": [],
+      "assertions": [
+        "Agent dispatches to Render mode.",
+        "Agent runs Setup Gate before render attempts.",
+        "Agent uses fl_render and records task id, provider, and bridge mode.",
+        "Agent verifies task completion instead of inferring success from task creation alone."
+      ]
+    },
+    {
       "id": "explicit-production-plan",
       "prompt": "/fl-mcp-production-flow plan \"make a four-bar hardstyle loop\"",
       "expected_output": "A non-mutating production workflow plan that starts with Setup Gate and uses compact MCP capability search and schema lookup.",

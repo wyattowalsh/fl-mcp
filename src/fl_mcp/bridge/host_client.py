@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import stat
 import sys
 import time
@@ -23,11 +25,199 @@ _PRIVATE_DIR_MODE = 0o700
 STATUS_FILE_NAME = "status.json"
 
 
+_IDEMPOTENCY_KEY_PATTERN = re.compile(r"[^A-Za-z0-9._-]+")
+IDEMPOTENCY_TTL_ENV = "FL_MCP_BRIDGE_IDEMPOTENCY_TTL_SECONDS"
+DEFAULT_IDEMPOTENCY_TTL_SECONDS = 3600.0
+
+
 class FileBridgeEnvelope(BaseModel):
     """Request envelope exchanged with the FL Studio MIDI script."""
 
     request_id: str = Field(min_length=1)
     request: BridgeLiveRequest
+    idempotency_key: str | None = None
+
+
+def _sanitize_idempotency_key(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = _IDEMPOTENCY_KEY_PATTERN.sub("-", value.strip())
+    cleaned = cleaned.strip("-")
+    return cleaned or None
+
+
+def _request_fingerprint(request: BridgeLiveRequest) -> str:
+    canonical = json.dumps(
+        {
+            "domain": request.domain,
+            "operation": request.operation,
+            "payload": request.payload,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _idempotency_ttl_seconds() -> float:
+    raw = os.getenv(IDEMPOTENCY_TTL_ENV)
+    if raw is None:
+        return DEFAULT_IDEMPOTENCY_TTL_SECONDS
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_IDEMPOTENCY_TTL_SECONDS
+    return value if value > 0 else DEFAULT_IDEMPOTENCY_TTL_SECONDS
+
+
+def _completed_cache_path(bridge_dir: Path, request_id: str) -> Path:
+    return bridge_dir / f"completed-{request_id}.json"
+
+
+def _read_completed_cache_entry(path: Path) -> dict[str, object] | None:
+    if not path.exists():
+        return None
+    try:
+        decoded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(decoded, dict):
+        return None
+    return {str(key): value for key, value in decoded.items()}
+
+
+def _completed_cache_is_fresh(entry: dict[str, object]) -> bool:
+    completed_at = entry.get("completed_at")
+    if not isinstance(completed_at, int | float):
+        return False
+    return (time.time() - float(completed_at)) <= _idempotency_ttl_seconds()
+
+
+def _write_completed_cache(
+    path: Path,
+    *,
+    fingerprint: str,
+    response: BridgeLiveResponse,
+) -> None:
+    _write_json_atomic(
+        path,
+        {
+            "fingerprint": fingerprint,
+            "response": response.model_dump(mode="json"),
+            "completed_at": time.time(),
+        },
+    )
+
+
+def _idempotency_mismatch_response(
+    request: BridgeLiveRequest,
+    *,
+    request_id: str,
+    bridge_dir: Path,
+) -> BridgeLiveResponse:
+    return _response(
+        request,
+        success=False,
+        error_code="idempotency_mismatch",
+        message=(
+            "Idempotency key was reused with a different request envelope "
+            "(domain, operation, or payload)."
+        ),
+        execution_id=f"filebridge-{request_id}",
+        result={
+            "bridge_dir": str(bridge_dir),
+            "request_id": request_id,
+        },
+    )
+
+
+def _invalid_idempotency_key_response(request: BridgeLiveRequest) -> BridgeLiveResponse:
+    return _response(
+        request,
+        success=False,
+        error_code="invalid_idempotency_key",
+        message="Idempotency key must contain at least one safe character after normalization.",
+    )
+
+
+def _stored_request_fingerprint(
+    bridge_dir: Path,
+    request_id: str,
+    *,
+    request_path: Path,
+) -> str | None:
+    if request_path.exists():
+        try:
+            envelope = FileBridgeEnvelope.model_validate_json(request_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, ValidationError):
+            return None
+        return _request_fingerprint(envelope.request)
+
+    completed_entry = _read_completed_cache_entry(_completed_cache_path(bridge_dir, request_id))
+    if completed_entry is None:
+        return None
+    fingerprint = completed_entry.get("fingerprint")
+    return fingerprint if isinstance(fingerprint, str) else None
+
+
+def _lookup_completed_cache_response(
+    request: BridgeLiveRequest,
+    *,
+    bridge_dir: Path,
+    request_id: str,
+    fingerprint: str,
+) -> BridgeLiveResponse | None:
+    entry = _read_completed_cache_entry(_completed_cache_path(bridge_dir, request_id))
+    if entry is None or not _completed_cache_is_fresh(entry):
+        return None
+
+    stored_fingerprint = entry.get("fingerprint")
+    if not isinstance(stored_fingerprint, str):
+        return None
+    if stored_fingerprint != fingerprint:
+        return _idempotency_mismatch_response(
+            request,
+            request_id=request_id,
+            bridge_dir=bridge_dir,
+        )
+
+    response_payload = entry.get("response")
+    if not isinstance(response_payload, dict):
+        return None
+    try:
+        return BridgeLiveResponse.model_validate(response_payload)
+    except ValidationError:
+        return None
+
+
+def _verify_cached_live_response(
+    request: BridgeLiveRequest,
+    *,
+    bridge_dir: Path,
+    request_id: str,
+    fingerprint: str,
+    response_path: Path,
+    request_path: Path,
+) -> BridgeLiveResponse:
+    stored_fingerprint = _stored_request_fingerprint(
+        bridge_dir,
+        request_id,
+        request_path=request_path,
+    )
+    if stored_fingerprint is None or stored_fingerprint != fingerprint:
+        return _idempotency_mismatch_response(
+            request,
+            request_id=request_id,
+            bridge_dir=bridge_dir,
+        )
+    return _read_response(response_path)
+
+
+def _request_id_for_bridge(request: BridgeLiveRequest) -> tuple[str, str | None]:
+    idempotency_key = _sanitize_idempotency_key(request.idempotency_key)
+    if idempotency_key:
+        return idempotency_key, idempotency_key
+    return uuid.uuid4().hex, None
 
 
 def bridge_dir_from_environment() -> Path:
@@ -98,6 +288,23 @@ def _write_json_atomic(path: Path, payload: dict[str, object]) -> None:
     tmp_path.replace(path)
 
 
+def _try_write_json_exclusive(path: Path, payload: dict[str, object]) -> bool:
+    """Create ``path`` with ``O_EXCL`` so concurrent submitters do not overwrite."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = json.dumps(payload, sort_keys=True).encode("utf-8")
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    try:
+        fd = os.open(path, flags, 0o600)
+    except FileExistsError:
+        return False
+    try:
+        os.write(fd, encoded)
+    finally:
+        os.close(fd)
+    return True
+
+
 def _read_response(path: Path) -> BridgeLiveResponse:
     decoded = json.loads(path.read_text(encoding="utf-8"))
     return BridgeLiveResponse.model_validate(decoded)
@@ -148,14 +355,55 @@ def run_file_bridge(
             message=str(exc),
             result={"bridge_dir": str(requested_dir.expanduser())},
         )
-    request_id = uuid.uuid4().hex
+    if request.idempotency_key is not None and _sanitize_idempotency_key(request.idempotency_key) is None:
+        return _invalid_idempotency_key_response(request)
+
+    request_id, idempotency_key = _request_id_for_bridge(request)
     request_path = request_dir / f"request-{request_id}.json"
     response_path = request_dir / f"response-{request_id}.json"
-    envelope = FileBridgeEnvelope(request_id=request_id, request=request)
+    fingerprint = _request_fingerprint(request)
+    envelope = FileBridgeEnvelope(
+        request_id=request_id,
+        request=request,
+        idempotency_key=idempotency_key,
+    )
 
-    _write_json_atomic(
+    if idempotency_key:
+        completed_hit = _lookup_completed_cache_response(
+            request,
+            bridge_dir=request_dir,
+            request_id=request_id,
+            fingerprint=fingerprint,
+        )
+        if completed_hit is not None:
+            return completed_hit
+
+    if response_path.exists():
+        try:
+            cached = _verify_cached_live_response(
+                request,
+                bridge_dir=request_dir,
+                request_id=request_id,
+                fingerprint=fingerprint,
+                response_path=response_path,
+                request_path=request_path,
+            )
+            if cached.success and not keep_files:
+                if idempotency_key:
+                    _write_completed_cache(
+                        _completed_cache_path(request_dir, request_id),
+                        fingerprint=fingerprint,
+                        response=cached,
+                    )
+                request_path.unlink(missing_ok=True)
+                response_path.unlink(missing_ok=True)
+            return cached
+        except (OSError, json.JSONDecodeError, ValidationError):
+            pass
+
+    _try_write_json_exclusive(
         request_path,
-        envelope.model_dump(mode="json"),
+        envelope.model_dump(mode="json", exclude_none=True),
     )
 
     poll_interval = poll_interval_seconds or _poll_interval_from_environment()
@@ -170,6 +418,12 @@ def run_file_bridge(
                 time.sleep(poll_interval)
                 continue
             if not keep_files:
+                if idempotency_key:
+                    _write_completed_cache(
+                        _completed_cache_path(request_dir, request_id),
+                        fingerprint=fingerprint,
+                        response=response,
+                    )
                 request_path.unlink(missing_ok=True)
                 response_path.unlink(missing_ok=True)
             return response

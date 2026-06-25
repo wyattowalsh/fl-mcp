@@ -6,6 +6,7 @@ import argparse
 import json
 
 from fl_mcp.bridge.bundle import bridge_runner_descriptor
+from fl_mcp.bridge.controller_install import sync_controller_script
 
 
 def build_parser(
@@ -22,13 +23,22 @@ def build_parser(
     install_parser.add_argument(
         "--dry-run", action="store_true", help="Print install plan without executing"
     )
+    install_parser.add_argument(
+        "--sync-controller",
+        action="store_true",
+        help="Copy bundled FL MCP Bridge controller script into FL Studio hardware settings",
+    )
     install_parser.set_defaults(handler=handle_install)
 
 
 def handle_install(args: argparse.Namespace) -> int:
     """Execute the install plan or print a dry-run summary."""
     descriptor = bridge_runner_descriptor()
-    payload = {
+    sync_result = None
+    if args.sync_controller:
+        sync_result = sync_controller_script(dry_run=args.dry_run)
+
+    payload: dict[str, object] = {
         "action": "install",
         "target": args.target,
         "dry_run": args.dry_run,
@@ -73,5 +83,9 @@ def handle_install(args: argparse.Namespace) -> int:
             "selection": "MIDI Settings > Controller type > FL MCP Bridge",
         },
     }
+    if sync_result is not None:
+        payload["sync_controller"] = sync_result.to_dict()
+        if sync_result.status == "error":
+            payload["status"] = "error"
     print(json.dumps(payload, indent=2))
-    return 0
+    return 1 if sync_result is not None and sync_result.status == "error" else 0

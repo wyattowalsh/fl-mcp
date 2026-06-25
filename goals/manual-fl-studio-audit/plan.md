@@ -101,9 +101,9 @@ Current-doc sources to refresh at run time:
      - `uv run fl-mcp install --dry-run`
      - `test -f fl-bundle/controller/device_FL_MCP_Bridge.py`
      - `cmp -s fl-bundle/controller/device_FL_MCP_Bridge.py "/Users/ww/Documents/Image-Line/FL Studio/Settings/Hardware/FL MCP Bridge/device_FL_MCP_Bridge.py"`
-     - `ls -ld /Users/ww/.fl-mcp/flstudio-bridge`
-     - `find /Users/ww/.fl-mcp/flstudio-bridge -maxdepth 1 -type f -print`
-     - `FL_MCP_BRIDGE_MODE=live FL_MCP_FL_STUDIO_BRIDGE_CMD="$(uv run python -c 'from fl_mcp.bridge.bundle import file_bridge_command; print(file_bridge_command())')" uv run python goals/manual-fl-studio-audit/run-*/scripts/live_smoke.py`
+     - `BRIDGE_DIR="$(uv run fl-mcp install --dry-run | jq -r '.environment.FL_MCP_FL_STUDIO_BRIDGE_DIR')"; ls -ld "$BRIDGE_DIR"`
+     - `BRIDGE_DIR="$(uv run fl-mcp install --dry-run | jq -r '.environment.FL_MCP_FL_STUDIO_BRIDGE_DIR')"; find "$BRIDGE_DIR" -maxdepth 1 -type f -print`
+     - `FL_MCP_BRIDGE_MODE=live FL_MCP_FL_STUDIO_BRIDGE_CMD="$(uv run python -c 'from fl_mcp.bridge.bundle import file_bridge_command; print(file_bridge_command())')" FL_MCP_FL_STUDIO_BRIDGE_DIR="$(uv run fl-mcp install --dry-run | jq -r '.environment.FL_MCP_FL_STUDIO_BRIDGE_DIR')" uv run python -c 'from fl_mcp.tools.compact import fl_execute; print(fl_execute("transport.get_state", {}, provider="flapi-live"))'`
 
 6. Audit the compact MCP surface in mock, harness, and live modes.
    - Touches: audit artifacts only.

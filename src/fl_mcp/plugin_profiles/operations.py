@@ -13,7 +13,11 @@ from typing import Protocol, cast, get_args
 from pydantic import BaseModel
 
 from fl_mcp.bridge.fl_studio import DEFAULT_BRIDGE, BridgeExecutionResult
-from fl_mcp.plugin_profiles.inventory import normalize_plugin_id, plugin_profile_overlay_dir
+from fl_mcp.plugin_profiles.inventory import (
+    inventory_scan_roots,
+    normalize_plugin_id,
+    plugin_profile_overlay_dir,
+)
 from fl_mcp.plugin_profiles.registry import (
     get_plugin_profile_registry,
     normalize_control_value,
@@ -34,6 +38,7 @@ from fl_mcp.schemas.plugin_profiles import (
     PluginValueMap,
     PluginWrapperFingerprint,
 )
+from fl_mcp.util.paths import LocalPathValidationError, is_uri_path, validate_local_path
 
 PROFILE_OPERATIONS: tuple[str, ...] = (
     "inventory_scan",
@@ -1353,17 +1358,42 @@ def _load_profile_preset(spec: _SpecLike, request: FLToolRequest) -> dict[str, o
     preset_path = cast(str | None, data.get("preset_path"))
     preset_name = cast(str | None, data.get("preset_name"))
     if preset_path:
-        path = Path(preset_path).expanduser()
-        if path.is_symlink() or not path.is_file():
+        if is_uri_path(preset_path):
+            return _response(
+                spec,
+                request,
+                status="error",
+                message="Preset path must be a local file under inventory roots.",
+                error_code="validation_failed",
+                result={"preset_path": preset_path},
+            )
+        try:
+            path = validate_local_path(
+                preset_path,
+                allowed_roots=inventory_scan_roots(),
+                must_exist=True,
+                allow_uri=False,
+            )
+        except LocalPathValidationError as exc:
+            return _response(
+                spec,
+                request,
+                status="error",
+                message=str(exc),
+                error_code="validation_failed",
+                result={"preset_path": _redact_path(preset_path)},
+            )
+        resolved_path = Path(path) if isinstance(path, str) else path
+        if not resolved_path.is_file():
             return _response(
                 spec,
                 request,
                 status="error",
                 message=f"Preset path is unavailable: {_redact_path(str(path))}.",
                 error_code="preset_unavailable",
-                result={"preset_path": _redact_path(str(path))},
+                result={"preset_path": _redact_path(str(resolved_path))},
             )
-        preset_name = path.stem
+        preset_name = resolved_path.stem
     if not preset_name:
         return _response(
             spec,

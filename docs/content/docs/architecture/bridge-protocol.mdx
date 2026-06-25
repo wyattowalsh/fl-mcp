@@ -18,9 +18,10 @@ the typed response file from inside the DAW Python host.
 | `FL_MCP_BRIDGE_MODE` | No | `mock` | Set to `live` to enable subprocess execution |
 | `FL_MCP_FL_STUDIO_BRIDGE_CMD` | Yes (live) | — | Absolute path or command to the bridge executable |
 | `FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS` | No | `20.0` | Outer per-operation subprocess timeout in seconds |
-| `FL_MCP_FL_STUDIO_BRIDGE_DIR` | No | Installer-reported script-local `bridge/` directory | Private request/response directory shared by `host_client` and the FL Studio MIDI script |
+| `FL_MCP_FL_STUDIO_BRIDGE_DIR` | No | `~/.fl-mcp/flstudio-bridge` | Private request/response directory shared by `host_client` and the FL Studio MIDI script. The installer may report a script-local `bridge/` path; set this variable explicitly when the DAW script and MCP host must share a non-default directory. |
 | `FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS` | No | `0.05` | MCP-side response-file polling interval used by `host_client` |
 | `FL_MCP_FL_STUDIO_BRIDGE_LOG` | No | unset | Set to `1`, `true`, `yes`, or `on` to enable persistent DAW-side diagnostic logging |
+| `FL_MCP_BRIDGE_IDEMPOTENCY_TTL_SECONDS` | No | `3600` | Seconds to honor `completed-{request_id}.json` replay entries after a successful idempotent roundtrip |
 
 ## Invocation
 
@@ -66,10 +67,14 @@ The bundled script declares `# supportedDevices=FL MCP Bridge,IAC Driver Bus 1`
 so the local virtual IAC MIDI device used by the actual-app smoke path can list
 the bridge as a selectable controller type.
 
-On POSIX systems both sides reject symlink and non-directory bridge paths,
-require the directory to be owned by the current user, and enforce `0700`
-permissions. `FL_MCP_FL_STUDIO_BRIDGE_DIR` can override the location, but the
-same safety checks apply. If the variable is not available inside FL Studio,
+On POSIX systems `host_client` and the bundled MIDI script reject symlink and
+non-directory bridge paths, require the directory to be owned by the current
+user, and enforce `0700` permissions. On Windows, `host_client` creates the
+bridge directory but skips POSIX ownership and `0700` enforcement because those
+metadata checks are unavailable—treat Windows bridge directories as **best-effort
+private** and keep them under a per-user path. `FL_MCP_FL_STUDIO_BRIDGE_DIR` can
+override the location, but POSIX safety checks still apply when the platform
+supports them. If the variable is not available inside FL Studio,
 the MIDI script uses its script-local `bridge/` directory. Some FL Studio macOS
 hosts raise low-level `SystemError` from POSIX metadata calls even when normal
 file writes work. For that default script-local directory only, the MIDI script
@@ -89,15 +94,67 @@ The file-queue envelope written by `host_client` is:
 ```json
 {
   "request_id": "unique-string",
+  "idempotency_key": "optional-stable-retry-key",
   "request": {
     "domain": "transport",
     "operation": "get_state",
     "payload": {},
     "provider": "flapi-live",
-    "rollback_class": null
+    "rollback_class": null,
+    "idempotency_key": "optional-stable-retry-key"
   }
 }
 ```
+
+When `request.idempotency_key` is set, both adapters share key sanitization,
+fingerprinting, completed-cache replay, and mismatch protection. The in-flight
+deduplication strategy differs by adapter.
+
+### Host-file bridge (`host_client`)
+
+1. Sanitize the key to `[A-Za-z0-9._-]` (unsafe characters become `-`). Keys
+   that normalize to empty return `invalid_idempotency_key` before bridge I/O.
+2. Use the sanitized key as the stable `request_id`.
+3. Compute a **fingerprint**—SHA-256 of canonical JSON for `domain`,
+   `operation`, and `payload` (sorted keys, compact separators).
+4. **In-flight deduplication:** if `response-{request_id}.json` already exists,
+   verify the stored fingerprint against the current request and return the
+   cached response instead of enqueueing a second DAW mutation.
+5. **Exclusive submit:** concurrent submitters create `request-{request_id}.json`
+   with `O_EXCL` so only one writer enqueues a new mutation; losers poll the
+   shared response file instead of overwriting the request envelope.
+6. **Completed cache:** after cleanup, write `completed-{request_id}.json`
+   containing `fingerprint`, `response`, and `completed_at`. Retries within
+   `FL_MCP_BRIDGE_IDEMPOTENCY_TTL_SECONDS` (default `3600`) replay that
+   response without re-submitting to FL Studio. Expired entries are ignored and
+   the client may submit a fresh request file.
+7. **Mismatch protection:** reusing the same idempotency key with a different
+   domain, operation, or payload returns `idempotency_mismatch` instead of
+   executing the new request.
+
+### Selected-controller adapter
+
+1. Reuses the same sanitization, fingerprint, completed-cache, and mismatch
+   rules from `host_client` helpers.
+2. Does **not** use per-request `request-{request_id}.json` /
+   `response-{request_id}.json` files. The DAW protocol uses fixed
+   `mcp_command.json` and `mcp_response.json` filenames.
+3. **In-flight serialization:** a local lock file serializes concurrent requests.
+   Another caller receives `selected_controller_busy` when the lock is held until
+   timeout instead of overwriting an in-flight command.
+
+### Transport play and pause
+
+The compact surface exposes distinct `transport.play` and `transport.pause`
+operations so agents can express intent clearly. The bundled
+`device_FL_MCP_Bridge.py` and selected-controller adapter both invoke FL
+Studio's `transport.start()` for **both** operations—FL's start API is a
+play/pause **toggle**, not separate play-only and pause-only calls.
+`transport.stop` maps to `transport.stop()`. After transport mutations, read
+back with `transport.get_state` or `transport.get_playback_state` to confirm the
+observed playing flag. At the MCP layer, `transport.pause` is documented as
+pausing without rewinding the playhead; actual playhead behavior follows FL
+Studio host semantics.
 
 The FL Studio script writes `response-{request_id}.json` containing the same
 `BridgeLiveResponse` schema described below. The MCP-side `host_client` writes
@@ -212,6 +269,8 @@ Any non-zero exit code is treated as a bridge failure.
 | `invalid_request` | Packaged runner received invalid request JSON or schema | Check caller serialization |
 | `fl_api_unavailable` | Packaged runner live mode cannot import FL Studio API modules | Run from FL Studio's scripting host or use harness mode |
 | `selected_controller_busy` | Another selected-controller request held the compatibility lock until timeout | Retry after the in-flight request completes |
+| `invalid_idempotency_key` | Idempotency key normalized to empty after sanitization | Provide a key with at least one safe character |
+| `idempotency_mismatch` | Same idempotency key reused with a different domain, operation, or payload fingerprint | Use a new key or replay the original request envelope |
 | `mock_forced_failure` | Mock forced failure via `force_fail=true` payload | Test-only; remove `force_fail` from payload |
 
 ## Bridge Modes

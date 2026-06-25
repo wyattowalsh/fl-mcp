@@ -41,7 +41,7 @@ from fl_mcp.schemas.compact_surface import (
     FLTaskEntryResponse,
 )
 from fl_mcp.tools import compact
-from fl_mcp.tools.fl_surface import native_task_id_context
+from fl_mcp.tools.fl_surface import FL_TOOL_SPECS, native_task_id_context
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,13 @@ PROGRESS_ENABLED_COMPACT_TOOLS = {
     "fl_browser",
 }
 _SIGNATURE_ATTRIBUTE = "__signature__"
+
+def _operation_catalog_description() -> str:
+    return (
+        "Search the hidden "
+        f"{len(FL_TOOL_SPECS)}-operation FL catalog by intent, domain, provider, and safety."
+    )
+
 
 COMPACT_SERVER_INSTRUCTIONS = """\
 You are connected to FL Studio through a compact full-power FastMCP surface.
@@ -91,9 +98,7 @@ COMPACT_TOOL_METADATA: dict[str, dict[str, object]] = {
     },
     "fl_search_capabilities": {
         "title": "FL Search Capabilities",
-        "description": (
-            "Search the hidden 216-operation FL catalog by intent, domain, provider, and safety."
-        ),
+        "description": _operation_catalog_description(),
         "tags": {"compact", "capabilities", "search", "read"},
         "annotations": {"readOnlyHint": True, "idempotentHint": True, "openWorldHint": True},
         "output_schema": CapabilitySearchResponse.model_json_schema(),
@@ -111,7 +116,12 @@ COMPACT_TOOL_METADATA: dict[str, dict[str, object]] = {
         "title": "FL Execute",
         "description": "Execute one validated FL operation by canonical operation id.",
         "tags": {"compact", "execute", "operation", "write"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLExecuteResponse.model_json_schema(),
     },
     "fl_batch_execute": {
@@ -120,7 +130,12 @@ COMPACT_TOOL_METADATA: dict[str, dict[str, object]] = {
             "Execute ordered FL operation batches with stop/continue and readback policy."
         ),
         "tags": {"compact", "batch", "workflow", "write"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLBatchExecuteResponse.model_json_schema(),
     },
     "fl_plan": {
@@ -134,35 +149,60 @@ COMPACT_TOOL_METADATA: dict[str, dict[str, object]] = {
         "title": "FL Apply",
         "description": "Apply planned or typed transaction changes with rollback policy.",
         "tags": {"compact", "transaction", "apply", "write"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLApplyResponse.model_json_schema(),
     },
     "fl_render": {
         "title": "FL Render",
         "description": "Queue render/export work and return task status metadata.",
         "tags": {"compact", "render", "task", "write"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLTaskEntryResponse.model_json_schema(),
     },
     "fl_analyze_audio": {
         "title": "FL Analyze Audio",
         "description": "Queue audio analysis and return task status metadata.",
         "tags": {"compact", "audio", "analysis", "task"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLTaskEntryResponse.model_json_schema(),
     },
     "fl_manage_providers": {
         "title": "FL Manage Providers",
         "description": "Inspect provider lifecycle and routing for mock/live/bridge execution.",
         "tags": {"compact", "providers", "runtime"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLProviderManagementResponse.model_json_schema(),
     },
     "fl_browser": {
         "title": "FL Browser",
         "description": "Search/load plugins, presets, samples, drum kits, and browser-like assets.",
         "tags": {"compact", "browser", "plugins", "samples", "workflow"},
-        "annotations": {"readOnlyHint": False, "idempotentHint": False, "openWorldHint": True},
+        "annotations": {
+            "readOnlyHint": False,
+            "destructiveHint": True,
+            "idempotentHint": False,
+            "openWorldHint": True,
+        },
         "output_schema": FLBrowserResponse.model_json_schema(),
     },
 }
@@ -250,6 +290,77 @@ def _current_fastmcp_context() -> Any | None:
         return None
 
 
+def _compact_tool_error_response(name: str, exc: Exception) -> dict[str, object]:
+    message = str(exc)
+    if name == "fl_status":
+        return FLStatusResponse(
+            status="error",
+            runtime={"error": message},
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_snapshot":
+        return FLSnapshotResponse(status="error", domain="unknown", error=message).model_dump(
+            mode="json", exclude_none=True
+        )
+    if name == "fl_search_capabilities":
+        return CapabilitySearchResponse(
+            status="error",
+            total=0,
+            count=0,
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_get_capability_schema":
+        return CapabilitySchemaResponse(
+            status="error",
+            operation_id="unknown",
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_execute":
+        return FLExecuteResponse(
+            status="error",
+            operation_id="unknown",
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_batch_execute":
+        return FLBatchExecuteResponse(
+            status="error",
+            policy="stop-on-error",
+            readback_policy="none",
+            total=0,
+            succeeded=0,
+            failed=0,
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_plan":
+        return FLPlanResponse(status="error", error=message).model_dump(
+            mode="json", exclude_none=True
+        )
+    if name == "fl_apply":
+        return FLApplyResponse(status="error", error=message).model_dump(
+            mode="json", exclude_none=True
+        )
+    if name == "fl_render":
+        return FLTaskEntryResponse(status="error", tool="fl_render", error=message).model_dump(
+            mode="json", exclude_none=True
+        )
+    if name == "fl_analyze_audio":
+        return FLTaskEntryResponse(
+            status="error",
+            tool="fl_analyze_audio",
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    if name == "fl_manage_providers":
+        return FLProviderManagementResponse(status="error", error=message).model_dump(
+            mode="json", exclude_none=True
+        )
+    if name == "fl_browser":
+        return FLBrowserResponse(
+            status="error",
+            action="search",
+            error=message,
+        ).model_dump(mode="json", exclude_none=True)
+    return {"status": "error", "tool": name, "error": message}
+
+
 def _async_tool_handler(
     name: str,
     handler: Callable[..., dict[str, object]],
@@ -270,7 +381,8 @@ def _async_tool_handler(
         except Exception as exc:
             if ctx is not None:
                 await ctx.error(f"{name} failed: {exc}")
-            raise
+            logger.warning("%s failed in async handler: %s", name, exc, exc_info=True)
+            return _compact_tool_error_response(name, exc)
 
         if ctx is not None and name in PROGRESS_ENABLED_COMPACT_TOOLS:
             await ctx.report_progress(progress=100, total=100)
@@ -380,6 +492,7 @@ def _register_resources(server: FastMCP, runtime_config: RuntimeConfig) -> None:
         description=RUNTIME_HEALTH_RESOURCE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=RUNTIME_HEALTH_RESOURCE_TAGS,
+        auth=check_auth_context,
     )(_rh)
     server.resource(
         uri=RUNTIME_CAPABILITIES_RESOURCE_URI,
@@ -387,6 +500,7 @@ def _register_resources(server: FastMCP, runtime_config: RuntimeConfig) -> None:
         description=RUNTIME_CAPABILITIES_RESOURCE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=RUNTIME_CAPABILITIES_RESOURCE_TAGS,
+        auth=check_auth_context,
     )(lambda: _runtime_capabilities_payload())
     server.resource(
         uri=PROVIDER_MATRIX_RESOURCE_URI,
@@ -394,6 +508,7 @@ def _register_resources(server: FastMCP, runtime_config: RuntimeConfig) -> None:
         description=PROVIDER_MATRIX_RESOURCE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=PROVIDER_MATRIX_RESOURCE_TAGS,
+        auth=check_auth_context,
     )(lambda: _provider_matrix_payload())
     server.resource(
         uri=PROJECT_SNAPSHOT_RESOURCE_URI,
@@ -401,6 +516,7 @@ def _register_resources(server: FastMCP, runtime_config: RuntimeConfig) -> None:
         description=PROJECT_SNAPSHOT_RESOURCE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=PROJECT_RESOURCE_TAGS,
+        auth=check_auth_context,
     )(_project_snapshot_payload)
     server.resource(
         uri=PROJECT_ARRANGEMENT_RESOURCE_URI,
@@ -408,6 +524,7 @@ def _register_resources(server: FastMCP, runtime_config: RuntimeConfig) -> None:
         description=PROJECT_ARRANGEMENT_RESOURCE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=PROJECT_RESOURCE_TAGS,
+        auth=check_auth_context,
     )(_project_arrangement_payload)
     _register_resource_templates(server)
 
@@ -419,6 +536,7 @@ def _register_resource_templates(server: FastMCP) -> None:
         description=DOMAIN_CAPABILITIES_TEMPLATE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=DOMAIN_CAPABILITIES_TEMPLATE_TAGS,
+        auth=check_auth_context,
     )(_domain_capabilities_payload)
     server.resource(
         uri=RENDER_JOB_TEMPLATE_URI,
@@ -426,6 +544,7 @@ def _register_resource_templates(server: FastMCP) -> None:
         description=RENDER_JOB_TEMPLATE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=RENDER_JOB_TEMPLATE_TAGS,
+        auth=check_auth_context,
     )(_render_job_payload)
     server.resource(
         uri=AUDIO_ANALYSIS_TEMPLATE_URI,
@@ -433,6 +552,7 @@ def _register_resource_templates(server: FastMCP) -> None:
         description=AUDIO_ANALYSIS_TEMPLATE_DESCRIPTION,
         mime_type=RUNTIME_HEALTH_RESOURCE_MIME_TYPE,
         tags=AUDIO_ANALYSIS_TEMPLATE_TAGS,
+        auth=check_auth_context,
     )(_audio_analysis_payload)
 
 

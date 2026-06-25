@@ -5,7 +5,22 @@ description: Entry point for FL MCP platform docs.
 
 FL MCP is a local-first FastMCP server for FL Studio. The public MCP surface is
 12 visible tools backed by 216 typed internal operations across 16 FL Studio
-domains.
+domains, 5 resources, 3 resource templates, 8 workflow prompts, and 4
+providers.
+
+> [!IMPORTANT]
+> **Mock vs live coverage**
+>
+> - **Mock catalog (216 ops):** deterministic rehearsal and CI validation with
+>   explicit `provider="mock"`.
+> - **Verified live (8 ops):** smoke-safe operations confirmed on the bundled
+>   host-file bridge.
+> - **Attemptable live (208 ops):** forced-live catalog operations that return
+>   structured errors when FL Studio does not expose a compatible callable.
+>
+> Live mode does not silently fall back to mock. See
+> [Providers](/docs/providers) and
+> [Tier B Release Runbook](/docs/validation/tier-b-release).
 
 ## Start Here
 
@@ -15,6 +30,7 @@ domains.
 - [Operation Workflows](/docs/operation-workflows)
 - [AI Workflows & Agent Teams](/docs/ai-workflows-agent-teams)
 - [Validation Runbook](/docs/validation-runbook)
+- [Tier B Release Runbook](/docs/validation/tier-b-release)
 - [Troubleshooting](/docs/troubleshooting)
 
 ## Install Path

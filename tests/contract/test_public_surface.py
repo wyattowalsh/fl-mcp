@@ -1,5 +1,6 @@
 import asyncio
 import json
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -327,6 +328,33 @@ def test_granular_schema_rejects_negative_indices_and_out_of_range_values() -> N
 
     assert negative["status"] == "error"
     assert too_loud["status"] == "error"
+
+
+def test_channels_load_sample_rejects_path_outside_inventory_roots(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    outside = tmp_path / "outside.wav"
+    outside.write_text("audio", encoding="utf-8")
+    allowed = tmp_path / "allowed"
+    allowed.mkdir()
+    monkeypatch.setattr(
+        "fl_mcp.util.paths.inventory_scan_roots",
+        lambda: (allowed.resolve(),),
+    )
+
+    executed = compact.fl_execute(
+        "channels.load_sample",
+        {"channel_index": 0, "file_path": str(outside)},
+        provider="mock",
+    )
+    result = cast(dict[str, object], executed["result"])
+
+    assert executed["status"] == "error"
+    assert executed["tool"] == "fl_execute"
+    assert executed["operation_id"] == "channels.load_sample"
+    assert result["error_code"] == "validation_failed"
+    assert "outside allowed inventory roots" in cast(str, result["message"])
 
 
 def test_custom_provider_name_executes_through_registry(monkeypatch: pytest.MonkeyPatch) -> None:

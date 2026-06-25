@@ -1,0 +1,105 @@
+---
+title: Tier B Release Runbook
+description: Operator checklist for live FL Studio production readiness and honest live coverage messaging.
+---
+
+Tier B is the **live FL Studio production** bar. It is separate from Tier A
+platform readiness (package install, mock catalog, CI, and compact-surface
+contracts). Tier B does **not** require 216/216 live operation successes. It
+does require honest live classification, enforced runtime policy where
+specified, bridge hardening, operator evidence, and aligned docs/skill messaging.
+
+## Live Coverage Model
+
+| Class | Count | Meaning |
+| --- | ---: | --- |
+| Verified live | 8 | Smoke-safe operations confirmed on the bundled host-file bridge |
+| Attemptable live | 208 | Forced-live catalog operations that may return structured errors |
+| Mock catalog | 216 | Full typed catalog available with `provider="mock"` |
+
+Verified live operations on the packaged bridge:
+
+- `general.get_version`
+- `general.get_project_title`
+- `transport.get_tempo`
+- `transport.get_state`
+- `transport.set_tempo`
+- `transport.play`
+- `transport.pause`
+- `transport.stop`
+
+Every other catalog operation is **attemptable** for `flapi-live`. Attemptable
+operations return structured outcomes such as `api_missing`,
+`unsupported_host_behavior`, `path_unavailable`, or `host_exception` instead of
+falling back to mock in live mode.
+
+## Public Surface Checklist
+
+Confirm these counts against `tests/contract/test_public_surface.py` and
+`fl-mcp doctor --format json`:
+
+- 12 visible MCP tools
+- 216 internal operations across 16 domains
+- 5 resources and 3 resource templates
+- 8 workflow prompts
+- 4 providers (`mock`, `flapi-live`, `piano-roll-script`, `midi-fallback`)
+
+## Preflight (Human)
+
+Before claiming live Tier B readiness:
+
+1. Install the bundled controller script and select **FL MCP Bridge** in FL
+   Studio MIDI settings.
+2. Run `fl-mcp doctor --format json` and confirm bridge directory, controller
+   script, and `status.json` heartbeat evidence.
+3. Execute the manual audit preflight from
+   [Live FL Studio Smoke](/docs/live-fl-studio-smoke) and
+   `goals/manual-fl-studio-audit/`.
+4. Record evidence in the manual audit ledger; do not infer live success from
+   mock CI alone.
+
+## Automated Gates
+
+Run from the repository root:
+
+```bash
+just verify
+uv run pytest tests/contract/test_public_surface.py -q
+uv run fl-mcp doctor --format json
+pnpm --dir docs --ignore-workspace check
+python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode mock --source local --repo-root . --format json
+python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode live --source local --repo-root . --format json
+```
+
+For docs or navigation changes, also run:
+
+```bash
+pnpm --dir docs --ignore-workspace lint
+pnpm --dir docs --ignore-workspace build
+```
+
+## Messaging Rules
+
+- README and docs home must distinguish **mock catalog**, **verified live**, and
+  **attemptable live** coverage.
+- Do not market "216 live DAW operations" or "full live catalog success."
+- Rollback and `safety_mode` semantics must match `SECURITY.md` and capability
+  schema guidance (server-enforced vs advisory).
+- Skill packages must include Gallery mode and setup-first routing for empty
+  invocations.
+
+## Human Sign-Off Triggers
+
+Require explicit human review before release claims when changes touch:
+
+- networked HTTP exposure beyond loopback defaults;
+- bridge trust boundaries or `FL_MCP_FL_STUDIO_BRIDGE_CMD` substitution;
+- marketing language implying full live production coverage;
+- rollback/checkpoint behavior agents may rely on for undo.
+
+## Related Docs
+
+- [Validation Runbook](/docs/validation-runbook)
+- [Providers](/docs/providers)
+- [Bridge Protocol](/docs/architecture/bridge-protocol)
+- [Public API Inventory](/docs/architecture/public-api-inventory)

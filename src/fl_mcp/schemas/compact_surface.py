@@ -56,6 +56,10 @@ class CapabilitySummaryModel(BaseModel):
     timeout: float | None = None
     safety: CapabilitySafetyModel = Field(default_factory=CapabilitySafetyModel)
     example_request: dict[str, object] = Field(default_factory=dict)
+    live_support_tier: str | None = None
+    verified_live: bool = False
+    attemptable: bool = False
+    selected_controller_compat: bool = False
 
 
 class CapabilitySearchResponse(BaseModel):
@@ -79,6 +83,9 @@ class CapabilitySchemaResponse(BaseModel):
     examples: list[dict[str, object]] = Field(default_factory=list)
     provider_support: list[str] = Field(default_factory=list)
     provider_support_details: list[ProviderSupportModel] = Field(default_factory=list)
+    verified_live: bool = False
+    attemptable: bool = False
+    live_support_tier: str | None = None
     error: str | None = None
 
 

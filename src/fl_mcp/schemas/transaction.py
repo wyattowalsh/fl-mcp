@@ -25,7 +25,11 @@ class TransactionEnvelope(BaseModel):
     mode: Literal["preview", "apply"]
     execution_policy: Literal["all-or-nothing", "allow-partial"] = "all-or-nothing"
     safety_mode: Literal["strict", "standard", "relaxed"] = Field(
-        default="standard", description="Reserved — accepted but not yet enforced."
+        default="standard",
+        description=(
+            "Safety policy: 'standard' allows all changes, 'strict' blocks destructive "
+            "changes, and 'relaxed' is rejected."
+        ),
     )
     freshness_policy: Literal["strict", "allow-stale"] = Field(
         default="strict", description="Reserved — accepted but not yet enforced."

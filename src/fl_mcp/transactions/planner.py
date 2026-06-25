@@ -3,7 +3,8 @@
 import logging
 from collections import Counter, defaultdict
 
-from fl_mcp.middleware.safety import ensure_safe_mode
+from fl_mcp.config.settings import settings
+from fl_mcp.middleware.safety import effective_safety_mode, enforce_safety_mode
 from fl_mcp.operations import validate_change
 from fl_mcp.schemas import DomainChange, TransactionEnvelope, TransactionResult
 from fl_mcp.transactions.interfaces import domain_result_key
@@ -14,14 +15,11 @@ logger = logging.getLogger(__name__)
 def plan_changes(envelope: TransactionEnvelope) -> TransactionResult:
     """Compile intent into a typed preview result."""
 
-    safety_mode = getattr(envelope, "safety_mode", "standard")
-    ensure_safe_mode(safety_mode)
-    if safety_mode != "standard":
-        logger.info(
-            "safety_mode='%s' accepted but not yet enforced (reserved) [%s]",
-            safety_mode,
-            getattr(envelope, "request_id", "unknown"),
-        )
+    envelope_mode = getattr(envelope, "safety_mode", "standard")
+    if envelope_mode == "relaxed":
+        enforce_safety_mode(envelope_mode, envelope.changes)
+    safety_mode = effective_safety_mode(envelope_mode, settings.safety_mode)
+    enforce_safety_mode(safety_mode, envelope.changes)
 
     total_by_domain: Counter[str] = Counter(change.domain for change in envelope.changes)
     seen: defaultdict[str, int] = defaultdict(int)

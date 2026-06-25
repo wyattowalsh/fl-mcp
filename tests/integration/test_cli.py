@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 import pytest
 
 from fl_mcp.bridge.bundle import default_file_bridge_dir
+from fl_mcp.cli import doctor as doctor_cli
 from fl_mcp.cli.main import main
+from fl_mcp.interfaces.status import DiagnosticCheck, HealthState
 
 # ---------------------------------------------------------------------------
 # Direct main() invocation tests (in-process, fast)
@@ -39,6 +42,50 @@ def test_doctor_json_output(capsys: pytest.CaptureFixture[str]) -> None:
     for check in data["checks"]:
         assert "name" in check
         assert "state" in check
+    check_names = {check["name"] for check in data["checks"]}
+    assert "controller-byte-match" in check_names
+    assert "status-freshness" in check_names
+    assert "host-poll-probe" in check_names
+
+
+def test_doctor_returns_nonzero_when_health_is_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Doctor exits 1 when aggregated health is ERROR."""
+
+    def _error_checks() -> list[DiagnosticCheck]:
+        return [
+            DiagnosticCheck(
+                name="controller-byte-match",
+                state=HealthState.ERROR,
+                details="installed controller missing",
+            )
+        ]
+
+    monkeypatch.setattr(doctor_cli, "collect_bridge_checks", _error_checks)
+
+    assert main(["doctor", "--format", "json"]) == 1
+    assert main(["doctor", "--format", "table"]) == 1
+
+
+def test_doctor_warning_exits_zero_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Doctor exits 0 when aggregated health is WARNING unless --fail-on-warning."""
+
+    def _warning_checks() -> list[DiagnosticCheck]:
+        return [
+            DiagnosticCheck(
+                name="fl-process-probe",
+                state=HealthState.WARNING,
+                details="FL Studio process not detected",
+            )
+        ]
+
+    monkeypatch.setattr(doctor_cli, "collect_bridge_checks", _warning_checks)
+
+    assert main(["doctor", "--format", "json"]) == 0
+    assert main(["doctor", "--format", "json", "--fail-on-warning"]) == 1
 
 
 def test_config_shell_env(capsys: pytest.CaptureFixture[str]) -> None:
@@ -112,6 +159,37 @@ def test_install_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
         == "uvx --from fl-mcp python -m fl_mcp.bridge.runner --mode harness"
     )
     assert data["fl_studio_controller"]["target_file"].endswith("device_FL_MCP_Bridge.py")
+
+
+def test_install_sync_controller_dry_run(
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """install --sync-controller --dry-run reports sync plan without writing."""
+    source = tmp_path / "bundle" / "device_FL_MCP_Bridge.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("# bundled\n", encoding="utf-8")
+    target_dir = tmp_path / "hardware"
+
+    from fl_mcp.bridge.controller_install import sync_controller_script
+
+    monkeypatch.setattr(
+        "fl_mcp.cli.install.sync_controller_script",
+        lambda **kwargs: sync_controller_script(
+            source=source,
+            target_dir=target_dir,
+            dry_run=kwargs.get("dry_run", False),
+        ),
+    )
+
+    rc = main(["install", "--dry-run", "--sync-controller"])
+    assert rc == 0
+    captured = capsys.readouterr()
+    data = json.loads(captured.out)
+    assert data["sync_controller"]["status"] == "planned"
+    assert data["sync_controller"]["dry_run"] is True
+    assert not (target_dir / "device_FL_MCP_Bridge.py").exists()
 
 
 # ---------------------------------------------------------------------------

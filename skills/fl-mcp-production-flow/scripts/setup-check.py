@@ -81,6 +81,49 @@ def run_command(
     }
 
 
+def emit_check_diagnostic(name: str, details: dict[str, Any]) -> None:
+    """Write human-readable failure diagnostics to stderr."""
+
+    command = details.get("command")
+    if command:
+        print(f"[setup-check] {name}: command failed: {command}", file=sys.stderr)
+    else:
+        print(f"[setup-check] {name}: check failed", file=sys.stderr)
+
+    returncode = details.get("returncode")
+    if returncode is not None:
+        print(f"[setup-check] {name}: exit code {returncode}", file=sys.stderr)
+
+    if details.get("timed_out"):
+        print(f"[setup-check] {name}: command timed out", file=sys.stderr)
+
+    stderr = details.get("stderr")
+    if isinstance(stderr, str) and stderr.strip():
+        print(f"[setup-check] {name}: stderr:\n{stderr.strip()}", file=sys.stderr)
+
+    stdout = details.get("stdout")
+    if isinstance(stdout, str) and stdout.strip() and not details.get("ok", True):
+        print(f"[setup-check] {name}: stdout:\n{stdout.strip()}", file=sys.stderr)
+
+
+def doctor_check_ok(doctor_result: dict[str, Any]) -> bool:
+    """Return whether doctor output indicates setup is healthy enough to proceed."""
+
+    if doctor_result.get("timed_out") or doctor_result.get("returncode") is None:
+        return False
+
+    stdout = doctor_result.get("stdout", "")
+    try:
+        parsed = json.loads(stdout) if stdout else {}
+    except json.JSONDecodeError:
+        return doctor_result["returncode"] == 0
+
+    health = parsed.get("health")
+    if health == "error":
+        return False
+    return doctor_result["returncode"] == 0
+
+
 def add_check(
     checks: list[dict[str, Any]],
     name: str,
@@ -96,8 +139,10 @@ def add_check(
     checks.append(check)
     if ok:
         evidence.append({"name": name, "details": details or {}})
-    elif missing_step:
-        missing_steps.append(missing_step)
+    else:
+        emit_check_diagnostic(name, check)
+        if missing_step:
+            missing_steps.append(missing_step)
 
 
 def choose_source(source: str, repo_root: Path) -> str:
@@ -233,11 +278,17 @@ def main() -> int:
             cwd=repo_root,
             timeout=args.timeout,
         )
+        doctor_details = dict(doctor_result)
+        try:
+            parsed = json.loads(doctor_result.get("stdout", "") or "{}")
+            doctor_details["health"] = parsed.get("health")
+        except json.JSONDecodeError:
+            doctor_details["health"] = None
         add_check(
             checks,
             "doctor_json",
-            bool(doctor_result["ok"]),
-            details=doctor_result,
+            doctor_check_ok(doctor_result),
+            details=doctor_details,
             missing_step="Run `fl-mcp doctor --format json` and resolve reported setup issues.",
             missing_steps=missing_steps,
             evidence=evidence,

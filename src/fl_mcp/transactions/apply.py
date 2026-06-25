@@ -8,7 +8,8 @@ from typing import Literal
 
 from fl_mcp.bridge.fl_studio import DEFAULT_BRIDGE, BridgeExecutionResult
 from fl_mcp.exceptions import ProviderError
-from fl_mcp.middleware.safety import ensure_safe_mode
+from fl_mcp.config.settings import settings
+from fl_mcp.middleware.safety import effective_safety_mode, enforce_safety_mode
 from fl_mcp.operations import OperationPayloadValidationError, execute_change, validate_change
 from fl_mcp.schemas import DomainChange, TransactionEnvelope, TransactionResult
 from fl_mcp.transactions.interfaces import (
@@ -108,14 +109,11 @@ def _finalize_all_or_nothing_failure(
 def apply_changes(envelope: TransactionEnvelope) -> TransactionResult:
     """Apply or preview a planned transaction envelope."""
 
-    safety_mode = getattr(envelope, "safety_mode", "standard")
-    ensure_safe_mode(safety_mode)
-    if safety_mode != "standard":
-        logger.info(
-            "safety_mode='%s' accepted but not yet enforced (reserved) [%s]",
-            safety_mode,
-            getattr(envelope, "request_id", "unknown"),
-        )
+    envelope_mode = getattr(envelope, "safety_mode", "standard")
+    if envelope_mode == "relaxed":
+        enforce_safety_mode(envelope_mode, envelope.changes)
+    safety_mode = effective_safety_mode(envelope_mode, settings.safety_mode)
+    enforce_safety_mode(safety_mode, envelope.changes)
 
     logger.info(
         "Applying transaction %s with %d changes, policy=%s",

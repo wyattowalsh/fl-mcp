@@ -12,6 +12,14 @@ from fl_mcp.logging import configure_logging
 from fl_mcp.server.http import run_streamable_http
 from fl_mcp.server.stdio import run_stdio
 
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+
+
+def is_loopback_host(host: str) -> bool:
+    """Return whether ``host`` is a loopback bind address."""
+
+    return host.strip().lower() in _LOOPBACK_HOSTS
+
 
 def build_parser(
     subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
@@ -36,8 +44,17 @@ def build_parser(
     run_parser.add_argument(
         "--dry-run", action="store_true", help="Emit config only without launching"
     )
-    run_parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP mode")
-    run_parser.add_argument("--port", type=int, default=8765, help="Port for HTTP mode")
+    run_parser.add_argument(
+        "--host",
+        default=None,
+        help="Host for HTTP mode (defaults to FL_MCP_HTTP_HOST or 127.0.0.1)",
+    )
+    run_parser.add_argument(
+        "--port",
+        type=int,
+        default=None,
+        help="Port for HTTP mode (defaults to FL_MCP_HTTP_PORT or 8765)",
+    )
     run_parser.add_argument("--path", default="/mcp", help="Path for streamable HTTP mode")
     run_parser.set_defaults(handler=handle_run)
 
@@ -49,7 +66,9 @@ def handle_run(args: argparse.Namespace) -> int:
         service_name=args.service_name,
         service_version=args.service_version,
     )
-    http = StreamableHTTPConfig(host=args.host, port=args.port, path=args.path)
+    http_host = args.host if args.host is not None else settings.http_host
+    http_port = args.port if args.port is not None else settings.http_port
+    http = StreamableHTTPConfig(host=http_host, port=http_port, path=args.path)
 
     payload = {
         "action": "server.run",
@@ -72,14 +91,30 @@ def handle_run(args: argparse.Namespace) -> int:
         print(json.dumps(payload, indent=2))
         return 0
 
-    production_http_without_auth = (
+    http_without_auth = (
         args.mode == "http"
-        and runtime.environment in {"prod", "production"}
         and not settings.auth_token
+        and not settings.http_allow_unauthenticated
     )
-    if production_http_without_auth:
+    if http_without_auth:
         print(
-            "FL_MCP_AUTH_TOKEN is required for production HTTP mode.",
+            "FL_MCP_AUTH_TOKEN is required for HTTP mode. "
+            "Set FL_MCP_HTTP_ALLOW_UNAUTHENTICATED=true for local development opt-out.",
+            flush=True,
+        )
+        return 2
+
+    http_unauth_non_loopback = (
+        args.mode == "http"
+        and not settings.auth_token
+        and settings.http_allow_unauthenticated
+        and not is_loopback_host(http.host)
+    )
+    if http_unauth_non_loopback:
+        print(
+            "FL_MCP_HTTP_ALLOW_UNAUTHENTICATED requires a loopback HTTP host "
+            f"({http.host!r} is not loopback). "
+            "Set FL_MCP_AUTH_TOKEN or use --host 127.0.0.1.",
             flush=True,
         )
         return 2

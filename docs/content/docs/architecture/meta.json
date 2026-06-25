@@ -1,0 +1,9 @@
+{
+  "title": "Architecture",
+  "pages": [
+    "index",
+    "public-api-inventory",
+    "bridge-protocol",
+    "reuse-audit"
+  ]
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+import threading
 from collections import Counter
 from pathlib import Path
 from typing import Any, cast, get_args, get_origin
@@ -12,12 +13,20 @@ from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUndefined
 
 from fl_mcp.bridge.fl_studio import DEFAULT_BRIDGE, default_provider_for_operation
+from fl_mcp.bridge.live_manifest import (
+    LiveSupportTier,
+    live_coverage_counts,
+    live_support_for_spec,
+    live_support_tier,
+)
 from fl_mcp.bridge.live_surface import (
     forced_live_flapi_supports,
     live_flapi_supports,
 )
 from fl_mcp.config import RuntimeConfig
+from fl_mcp.config.settings import settings
 from fl_mcp.exceptions import ProviderError
+from fl_mcp.middleware.safety import SafetyModeError, enforce_operation_safety_mode
 from fl_mcp.graph.model import ProjectGraph
 from fl_mcp.plugin_profiles.operations import (
     PROFILE_OPERATION_ID_SET,
@@ -51,7 +60,11 @@ from fl_mcp.schemas.compact_surface import (
     ProviderSupportModel,
     ReadbackPolicy,
 )
-from fl_mcp.schemas.fl_tools import AudioAnalyzeRequest, RenderExportRequest
+from fl_mcp.schemas.fl_tools import (
+    AudioAnalyzeRequest,
+    ChannelLoadSampleRequest,
+    RenderExportRequest,
+)
 from fl_mcp.tools import public
 from fl_mcp.tools.fl_surface import (
     FL_TOOL_HANDLERS,
@@ -59,8 +72,18 @@ from fl_mcp.tools.fl_surface import (
     PROVIDER_MATRIX,
     FLToolSpec,
 )
+from fl_mcp.util.paths import (
+    LocalPathValidationError,
+    validate_operation_local_paths,
+)
 
 logger = logging.getLogger(__name__)
+
+MAX_BATCH_OPERATIONS = 50
+MAX_LIVE_MUTATIONS_PER_SESSION = 25
+
+_LIVE_MUTATION_LOCK = threading.Lock()
+_LIVE_MUTATION_COUNT = 0
 
 COMPACT_TOOL_NAMES: tuple[str, ...] = (
     "fl_status",
@@ -263,6 +286,7 @@ def _safety_for_spec(spec: FLToolSpec) -> CapabilitySafetyModel:
 
 def _summary_for_spec(spec: FLToolSpec) -> CapabilitySummaryModel:
     support_details = _provider_support_for_spec(spec)
+    manifest = live_support_for_spec(spec)
     return CapabilitySummaryModel(
         operation_id=operation_id_for_spec(spec),
         tool_name=spec.name,
@@ -280,6 +304,10 @@ def _summary_for_spec(spec: FLToolSpec) -> CapabilitySummaryModel:
         timeout=spec.timeout,
         safety=_safety_for_spec(spec),
         example_request=example_request_for_spec(spec),
+        live_support_tier=str(manifest["live_support_tier"]),
+        verified_live=bool(manifest["verified_live"]),
+        attemptable=bool(manifest["attemptable"]),
+        selected_controller_compat=bool(manifest["selected_controller_compat"]),
     )
 
 
@@ -612,6 +640,19 @@ def _live_auto_mock_fallback_error(
     )
 
 
+def _live_mutation_limit_error() -> str | None:
+    """Return an error message when the live mutation session cap is exceeded."""
+
+    with _LIVE_MUTATION_LOCK:
+        if _LIVE_MUTATION_COUNT >= MAX_LIVE_MUTATIONS_PER_SESSION:
+            return (
+                "live mutation session limit "
+                f"({MAX_LIVE_MUTATIONS_PER_SESSION}) exceeded; "
+                f"session_count={_LIVE_MUTATION_COUNT}"
+            )
+    return None
+
+
 def _execute_operation(
     operation_id: str,
     request: dict[str, object] | BaseModel | None = None,
@@ -621,10 +662,36 @@ def _execute_operation(
 ) -> FLExecuteResponse:
     spec = _resolve_operation(operation_id)
     payload = _coerce_request_payload(request)
+    if not spec.annotations.get("readOnlyHint"):
+        enforce_operation_safety_mode(settings.safety_mode, operation_id)
+        if _is_live_mutation(operation_id, provider=provider, request=payload):
+            limit_error = _live_mutation_limit_error()
+            if limit_error is not None:
+                return FLExecuteResponse(
+                    status="error",
+                    operation_id=operation_id,
+                    operation=_summary_for_spec(spec),
+                    error=limit_error,
+                )
     if provider and provider != "auto":
         payload["provider"] = provider
 
     validated = spec.request_model.model_validate(payload)
+    try:
+        validate_operation_local_paths(operation_id, validated)
+    except LocalPathValidationError as exc:
+        return FLExecuteResponse(
+            status="error",
+            operation_id=operation_id,
+            operation=_summary_for_spec(spec),
+            error=str(exc),
+            result={
+                "status": "error",
+                "error_code": "validation_failed",
+                "message": str(exc),
+            },
+        )
+
     resolved_provider = _resolve_execution_provider(spec, provider, payload)
     fallback_error = _live_auto_mock_fallback_error(spec, resolved_provider)
     if (
@@ -650,6 +717,12 @@ def _execute_operation(
         result = _provider_result_payload(spec=spec, provider_result=provider_result)
     else:
         result = dict(FL_TOOL_HANDLERS[spec.name](validated))
+    if _status_from_result(result) != "error" and _is_live_mutation(
+        operation_id,
+        provider=provider,
+        request=payload,
+    ):
+        _record_live_mutation()
     readback_request = _coerce_readback(readback)
     readback_result: dict[str, object] | None = None
     if readback_request is not None:
@@ -695,6 +768,7 @@ def fl_status(runtime_config: RuntimeConfig | None = None) -> dict[str, object]:
             "internal_operation_count": len(FL_TOOL_SPECS),
             "domain_count": len(domain_counts),
             "domains": dict(sorted(domain_counts.items())),
+            "live_coverage": live_coverage_counts(),
         },
         providers=[dict(status) for status in registry.statuses()],
         bridge={
@@ -814,6 +888,10 @@ def fl_search_capabilities(
             continue
         if provider_filter and provider_filter not in summary.providers:
             continue
+        if provider_filter == "flapi-live":
+            tier = live_support_tier(spec.domain, spec.operation)
+            if tier is LiveSupportTier.UNSUPPORTED:
+                continue
         if read_only is not None and summary.safety.read_only is not read_only:
             continue
         if destructive is not None and summary.safety.destructive is not destructive:
@@ -875,6 +953,7 @@ def fl_get_capability_schema(operation_id: str) -> dict[str, object]:
         profile_metadata = _profile_operation_schema_metadata(operation_id)
         if profile_metadata is not None:
             example["plugin_profile_metadata"] = profile_metadata
+        manifest = live_support_for_spec(spec)
         response = CapabilitySchemaResponse(
             status="ok",
             operation_id=operation_id,
@@ -884,6 +963,9 @@ def fl_get_capability_schema(operation_id: str) -> dict[str, object]:
             examples=[example],
             provider_support=summary.providers,
             provider_support_details=summary.provider_support_details,
+            verified_live=bool(manifest["verified_live"]),
+            attemptable=bool(manifest["attemptable"]),
+            live_support_tier=str(manifest["live_support_tier"]),
         )
         return response.model_dump(mode="json", exclude_none=True)
     except KeyError as exc:
@@ -909,13 +991,73 @@ def fl_execute(
             provider=provider,
             readback=readback,
         ).model_dump(mode="json", exclude_none=True)
-    except (KeyError, ProviderError, ValidationError, TypeError) as exc:
+    except (KeyError, ProviderError, ValidationError, TypeError, SafetyModeError) as exc:
         logger.warning("fl_execute failed for %s: %s", operation_id, exc, exc_info=True)
         return FLExecuteResponse(
             status="error",
             operation_id=operation_id,
             error=str(exc),
         ).model_dump(mode="json", exclude_none=True)
+
+
+def reset_live_mutation_count() -> None:
+    """Reset the per-session live mutation counter (testing helper)."""
+
+    global _LIVE_MUTATION_COUNT
+    with _LIVE_MUTATION_LOCK:
+        _LIVE_MUTATION_COUNT = 0
+
+
+def get_live_mutation_count() -> int:
+    """Return the current per-session live mutation count."""
+
+    with _LIVE_MUTATION_LOCK:
+        return _LIVE_MUTATION_COUNT
+
+
+def _record_live_mutation() -> None:
+    global _LIVE_MUTATION_COUNT
+    with _LIVE_MUTATION_LOCK:
+        _LIVE_MUTATION_COUNT += 1
+
+
+def _is_read_only_operation(operation_id: str) -> bool:
+    try:
+        spec = _resolve_operation(operation_id)
+    except KeyError:
+        return False
+    return bool(spec.annotations.get("readOnlyHint"))
+
+
+def _is_live_mutation(
+    operation_id: str,
+    *,
+    provider: str,
+    request: dict[str, object] | None,
+) -> bool:
+    if _is_read_only_operation(operation_id):
+        return False
+    try:
+        spec = _resolve_operation(operation_id)
+    except KeyError:
+        return False
+    payload = dict(request or {})
+    resolved_provider = provider if provider != "auto" else str(payload.get("provider", "auto"))
+    if resolved_provider == "auto":
+        resolved_provider = _resolve_execution_provider(spec, "auto", payload)
+    return resolved_provider != "mock"
+
+
+def _count_live_mutations(operations: list[FLBatchOperationRequest]) -> int:
+    return sum(
+        1
+        for operation in operations
+        if _is_live_mutation(
+            operation.operation_id,
+            provider=operation.provider,
+            request=operation.request,
+        )
+    )
 
 
 def _default_readback_for_operation(
@@ -975,6 +1117,20 @@ def fl_batch_execute(
 ) -> dict[str, object]:
     """Execute an ordered operation batch with optional readback."""
 
+    if len(operations) > MAX_BATCH_OPERATIONS:
+        return FLBatchExecuteResponse(
+            status="error",
+            policy=policy,
+            readback_policy=readback_policy,
+            total=len(operations),
+            succeeded=0,
+            failed=len(operations),
+            error=(
+                f"batch exceeds maximum size of {MAX_BATCH_OPERATIONS} operations "
+                f"(received {len(operations)})"
+            ),
+        ).model_dump(mode="json", exclude_none=True)
+
     results: list[dict[str, object]] = []
     failed = 0
     succeeded = 0
@@ -994,6 +1150,40 @@ def fl_batch_execute(
             succeeded=0,
             failed=len(operations),
             error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
+
+    try:
+        for operation in normalized_operations:
+            if not _is_read_only_operation(operation.operation_id):
+                enforce_operation_safety_mode(settings.safety_mode, operation.operation_id)
+    except SafetyModeError as exc:
+        return FLBatchExecuteResponse(
+            status="error",
+            policy=policy,
+            readback_policy=readback_policy,
+            total=len(normalized_operations),
+            succeeded=0,
+            failed=len(normalized_operations),
+            error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
+
+    live_mutations_in_batch = _count_live_mutations(normalized_operations)
+    with _LIVE_MUTATION_LOCK:
+        projected_live_mutations = _LIVE_MUTATION_COUNT + live_mutations_in_batch
+    if projected_live_mutations > MAX_LIVE_MUTATIONS_PER_SESSION:
+        return FLBatchExecuteResponse(
+            status="error",
+            policy=policy,
+            readback_policy=readback_policy,
+            total=len(normalized_operations),
+            succeeded=0,
+            failed=len(normalized_operations),
+            error=(
+                "batch would exceed live mutation session limit "
+                f"({MAX_LIVE_MUTATIONS_PER_SESSION}); "
+                f"session_count={get_live_mutation_count()}, "
+                f"batch_live_mutations={live_mutations_in_batch}"
+            ),
         ).model_dump(mode="json", exclude_none=True)
 
     deferred_readbacks: list[tuple[int, CapabilityReadbackRequest]] = []
@@ -1093,36 +1283,61 @@ def fl_apply(envelope: dict[str, object] | TransactionEnvelope) -> dict[str, obj
 def fl_render(request: RenderExportRequest | dict[str, object] | None = None) -> dict[str, object]:
     """Queue a render/export task through the compact surface."""
 
-    payload = (
-        request
-        if isinstance(request, RenderExportRequest)
-        else RenderExportRequest.model_validate(request or {})
-    )
-    if payload.provider != "mock" and (payload.provider != "auto" or DEFAULT_BRIDGE.mode == "live"):
-        executed = _execute_operation(
-            "render.export",
-            payload.model_dump(exclude_none=True, exclude={"session_label"}),
-            provider=payload.provider,
-        ).model_dump(mode="json", exclude_none=True)
-        status = "error" if executed.get("status") == "error" else "ok"
+    try:
+        payload = (
+            request
+            if isinstance(request, RenderExportRequest)
+            else RenderExportRequest.model_validate(request or {})
+        )
+        try:
+            validate_operation_local_paths("render.export", payload)
+        except LocalPathValidationError as exc:
+            return FLTaskEntryResponse(
+                status="error",
+                tool="fl_render",
+                error=str(exc),
+            ).model_dump(mode="json", exclude_none=True)
+        if payload.provider != "mock" and (
+            payload.provider != "auto" or DEFAULT_BRIDGE.mode == "live"
+        ):
+            executed = _execute_operation(
+                "render.export",
+                payload.model_dump(exclude_none=True, exclude={"session_label"}),
+                provider=payload.provider,
+            ).model_dump(mode="json", exclude_none=True)
+            status = "error" if executed.get("status") == "error" else "ok"
+            return FLTaskEntryResponse(
+                status=cast(Any, status),
+                tool="fl_render",
+                result=executed,
+                task_id=_task_id_from_result(executed),
+                error=cast(str | None, executed.get("error")),
+            ).model_dump(mode="json", exclude_none=True)
+        if payload.provider == "auto":
+            payload = payload.model_copy(update={"provider": "mock"})
+        result = public.render_project(payload)
+        status = "error" if result.get("status") == "error" else "ok"
         return FLTaskEntryResponse(
             status=cast(Any, status),
             tool="fl_render",
-            result=executed,
-            task_id=_task_id_from_result(executed),
-            error=cast(str | None, executed.get("error")),
+            result=result,
+            task_id=_task_id_from_result(result),
+            error=cast(str | None, result.get("error")),
         ).model_dump(mode="json", exclude_none=True)
-    if payload.provider == "auto":
-        payload = payload.model_copy(update={"provider": "mock"})
-    result = public.render_project(payload)
-    status = "error" if result.get("status") == "error" else "ok"
-    return FLTaskEntryResponse(
-        status=cast(Any, status),
-        tool="fl_render",
-        result=result,
-        task_id=_task_id_from_result(result),
-        error=cast(str | None, result.get("error")),
-    ).model_dump(mode="json", exclude_none=True)
+    except (ProviderError, ValidationError, TypeError, ValueError) as exc:
+        logger.warning("fl_render failed: %s", exc, exc_info=True)
+        return FLTaskEntryResponse(
+            status="error",
+            tool="fl_render",
+            error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
+    except Exception as exc:
+        logger.warning("fl_render failed: %s", exc, exc_info=True)
+        return FLTaskEntryResponse(
+            status="error",
+            tool="fl_render",
+            error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
 
 
 def fl_analyze_audio(
@@ -1130,36 +1345,61 @@ def fl_analyze_audio(
 ) -> dict[str, object]:
     """Queue an audio analysis task through the compact surface."""
 
-    payload = (
-        request
-        if isinstance(request, AudioAnalyzeRequest)
-        else AudioAnalyzeRequest.model_validate(request or {})
-    )
-    if payload.provider != "mock" and (payload.provider != "auto" or DEFAULT_BRIDGE.mode == "live"):
-        executed = _execute_operation(
-            "audio.analyze",
-            payload.model_dump(exclude_none=True, exclude={"session_label"}),
-            provider=payload.provider,
-        ).model_dump(mode="json", exclude_none=True)
-        status = "error" if executed.get("status") == "error" else "ok"
+    try:
+        payload = (
+            request
+            if isinstance(request, AudioAnalyzeRequest)
+            else AudioAnalyzeRequest.model_validate(request or {})
+        )
+        try:
+            validate_operation_local_paths("audio.analyze", payload)
+        except LocalPathValidationError as exc:
+            return FLTaskEntryResponse(
+                status="error",
+                tool="fl_analyze_audio",
+                error=str(exc),
+            ).model_dump(mode="json", exclude_none=True)
+        if payload.provider != "mock" and (
+            payload.provider != "auto" or DEFAULT_BRIDGE.mode == "live"
+        ):
+            executed = _execute_operation(
+                "audio.analyze",
+                payload.model_dump(exclude_none=True, exclude={"session_label"}),
+                provider=payload.provider,
+            ).model_dump(mode="json", exclude_none=True)
+            status = "error" if executed.get("status") == "error" else "ok"
+            return FLTaskEntryResponse(
+                status=cast(Any, status),
+                tool="fl_analyze_audio",
+                result=executed,
+                task_id=_task_id_from_result(executed),
+                error=cast(str | None, executed.get("error")),
+            ).model_dump(mode="json", exclude_none=True)
+        if payload.provider == "auto":
+            payload = payload.model_copy(update={"provider": "mock"})
+        result = public.analyze_audio(payload)
+        status = "error" if result.get("status") == "error" else "ok"
         return FLTaskEntryResponse(
             status=cast(Any, status),
             tool="fl_analyze_audio",
-            result=executed,
-            task_id=_task_id_from_result(executed),
-            error=cast(str | None, executed.get("error")),
+            result=result,
+            task_id=_task_id_from_result(result),
+            error=cast(str | None, result.get("error")),
         ).model_dump(mode="json", exclude_none=True)
-    if payload.provider == "auto":
-        payload = payload.model_copy(update={"provider": "mock"})
-    result = public.analyze_audio(payload)
-    status = "error" if result.get("status") == "error" else "ok"
-    return FLTaskEntryResponse(
-        status=cast(Any, status),
-        tool="fl_analyze_audio",
-        result=result,
-        task_id=_task_id_from_result(result),
-        error=cast(str | None, result.get("error")),
-    ).model_dump(mode="json", exclude_none=True)
+    except (ProviderError, ValidationError, TypeError, ValueError) as exc:
+        logger.warning("fl_analyze_audio failed: %s", exc, exc_info=True)
+        return FLTaskEntryResponse(
+            status="error",
+            tool="fl_analyze_audio",
+            error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
+    except Exception as exc:
+        logger.warning("fl_analyze_audio failed: %s", exc, exc_info=True)
+        return FLTaskEntryResponse(
+            status="error",
+            tool="fl_analyze_audio",
+            error=str(exc),
+        ).model_dump(mode="json", exclude_none=True)
 
 
 def fl_manage_providers(
@@ -1206,6 +1446,20 @@ def _infer_browser_load_operation(
     if kind == "drum_kit":
         return "patterns.create_pattern"
     return "plugins.load"
+
+
+def _validate_browser_sample_path(load_request: dict[str, object]) -> str | None:
+    file_path = load_request.get("file_path")
+    if not isinstance(file_path, str):
+        return None
+    try:
+        validate_operation_local_paths(
+            "channels.load_sample",
+            ChannelLoadSampleRequest(channel_index=0, file_path=file_path),
+        )
+    except LocalPathValidationError as exc:
+        return str(exc)
+    return None
 
 
 def _browser_load_request(
@@ -1359,6 +1613,17 @@ def fl_browser(
             browser_operation = "plugins.load_profile_preset"
         load_operation = _infer_browser_load_operation(kind, browser_operation)
         load_request = _browser_load_request(kind, query, load_operation, request)
+        if load_operation == "channels.load_sample":
+            sample_path_error = _validate_browser_sample_path(load_request)
+            if sample_path_error is not None:
+                return FLBrowserResponse(
+                    status="error",
+                    action=action,
+                    kind=kind,
+                    query=query,
+                    asset_discovery_status=_asset_discovery_status(kind, action, query, limit),
+                    error=sample_path_error,
+                ).model_dump(mode="json", exclude_none=True)
         load_result = fl_execute(load_operation, load_request, provider=provider)
         status = "error" if load_result.get("status") == "error" else "ok"
         return FLBrowserResponse(

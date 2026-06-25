@@ -90,6 +90,16 @@ def test_default_file_bridge_dir_is_private_user_directory(
         assert stat.S_IMODE(secure_dir.stat().st_mode) == 0o700
 
 
+def test_try_write_json_exclusive_creates_file_once(tmp_path: Path) -> None:
+    path = tmp_path / "request-exclusive.json"
+    payload = {"request_id": "stable-id", "value": 1}
+
+    assert host_client._try_write_json_exclusive(path, payload) is True
+    assert json.loads(path.read_text(encoding="utf-8")) == payload
+    assert host_client._try_write_json_exclusive(path, {"request_id": "other"}) is False
+    assert json.loads(path.read_text(encoding="utf-8"))["request_id"] == "stable-id"
+
+
 def test_file_bridge_client_round_trips_through_response_file(tmp_path: Path) -> None:
     def host_worker() -> None:
         request_path = _wait_for_request_file(tmp_path)
@@ -409,6 +419,24 @@ def test_selected_controller_client_serializes_concurrent_requests(tmp_path: Pat
     assert {response.result["pan"] for response in responses} == {0.15, -0.15}
     assert all(response.success for response in responses)
     assert not (tmp_path / ".mcp_command.lock").exists()
+
+
+def test_selected_controller_client_rejects_insecure_controller_dir(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secure_dir = tmp_path / "secure"
+    secure_dir.mkdir()
+    symlink_dir = tmp_path / "selected-controller-link"
+    symlink_dir.symlink_to(secure_dir)
+
+    response = run_selected_controller_bridge(
+        BridgeLiveRequest(domain="transport", operation="get_state", provider="flapi-live"),
+        controller_dir=symlink_dir,
+    )
+
+    assert response.success is False
+    assert response.error_code == "bridge_dir_insecure"
 
 
 def test_selected_controller_client_reports_unsupported_operation(tmp_path: Path) -> None:

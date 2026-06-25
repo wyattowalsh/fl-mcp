@@ -17,6 +17,15 @@ class BridgeLiveRequest(BaseModel):
     rollback_class: RollbackClass | None = None
     provider: str | None = None
     payload: dict[str, object] = Field(default_factory=dict)
+    idempotency_key: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description=(
+            "Optional stable key for bridge retries. When set, host_client reuses "
+            "the key as request_id and returns an existing response file when present."
+        ),
+    )
 
 
 class BridgeLiveResponse(BaseModel):

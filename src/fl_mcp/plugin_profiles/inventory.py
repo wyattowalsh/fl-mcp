@@ -166,6 +166,19 @@ def _system_plugin_roots() -> list[Path]:
     return [root for root in roots if root.exists()]
 
 
+def inventory_scan_roots() -> tuple[Path, ...]:
+    """Return filesystem roots used for plugin and preset inventory scans."""
+
+    roots = [*_system_plugin_roots(), *_fl_user_roots()]
+    resolved: list[Path] = []
+    for root in roots:
+        try:
+            resolved.append(root.expanduser().resolve(strict=False))
+        except OSError:
+            continue
+    return tuple(resolved)
+
+
 def _fl_user_roots() -> list[Path]:
     candidates = [
         Path.home() / "Documents/Image-Line/FL Studio",

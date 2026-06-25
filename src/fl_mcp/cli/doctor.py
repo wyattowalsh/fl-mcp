@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from fl_mcp.bridge.bundle import bridge_runner_descriptor, run_harness_smoke
+from fl_mcp.bridge.bridge_diagnostics import collect_bridge_checks, diagnostic_context
 from fl_mcp.interfaces.status import DiagnosticCheck, HealthState, HelperStatusPayload
 
 
@@ -20,68 +20,57 @@ def build_parser(
         choices=("table", "json"),
         help="Output format",
     )
+    doctor_parser.add_argument(
+        "--fail-on-warning",
+        action="store_true",
+        help="Exit with code 1 when aggregated health is WARNING (default: exit 0).",
+    )
     doctor_parser.set_defaults(handler=handle_doctor)
+
+
+def _aggregate_health(checks: list[DiagnosticCheck]) -> HealthState:
+    if any(check.state is HealthState.ERROR for check in checks):
+        return HealthState.ERROR
+    if any(check.state is HealthState.WARNING for check in checks):
+        return HealthState.WARNING
+    return HealthState.OK
 
 
 def handle_doctor(args: argparse.Namespace) -> int:
     """Run diagnostic checks and print results as a table or JSON."""
-    bridge_descriptor = bridge_runner_descriptor()
-    harness_smoke = run_harness_smoke()
-    harness_ok = harness_smoke.get("ok") is True
-    health = HealthState.OK if harness_ok else HealthState.WARNING
+    ctx = diagnostic_context()
+    checks = [
+        DiagnosticCheck(
+            name="python",
+            state=HealthState.OK,
+            details="Python runtime available",
+        ),
+        *collect_bridge_checks(),
+    ]
+    health = _aggregate_health(checks)
     status = HelperStatusPayload(
         health=health,
-        checks=[
-            DiagnosticCheck(
-                name="python",
-                state=HealthState.OK,
-                details="Python runtime available",
-            ),
-            DiagnosticCheck(
-                name="bundle",
-                state=HealthState.OK,
-                details=f"Bridge runner command: {bridge_descriptor.command}",
-            ),
-            DiagnosticCheck(
-                name="fl-host-script",
-                state=HealthState.OK,
-                details=(
-                    "Install "
-                    f"{bridge_descriptor.controller_script} to "
-                    f"{bridge_descriptor.hardware_script_dir} and select FL MCP Bridge "
-                    "in FL Studio MIDI Settings."
-                ),
-            ),
-            DiagnosticCheck(
-                name="selected-controller-adapter",
-                state=HealthState.OK,
-                details=(
-                    "Selected-controller command: "
-                    f"{bridge_descriptor.selected_controller_command}; "
-                    f"directory: {bridge_descriptor.selected_controller_dir}"
-                ),
-            ),
-            DiagnosticCheck(
-                name="bridge-harness",
-                state=HealthState.OK if harness_ok else HealthState.WARNING,
-                details=json.dumps(harness_smoke, sort_keys=True),
-            ),
-        ],
+        checks=checks,
         logs=[
-            "Doctor executed packaged bridge harness read/mutation smoke.",
-            f"Harness command: {bridge_descriptor.harness_command}",
-            f"FL host bridge dir: {bridge_descriptor.bridge_dir}",
-            f"Selected-controller dir: {bridge_descriptor.selected_controller_dir}",
+            "Doctor executed separate bridge checks: harness, controller byte-match, "
+            "FL process probe, status freshness, host poll probe, and controller selection.",
+            f"Harness command: {ctx.harness_command}",
+            f"FL host bridge dir: {ctx.bridge_dir}",
+            f"Selected-controller dir: {ctx.selected_controller_dir}",
         ],
     )
 
+    exit_code = 1 if health is HealthState.ERROR else 0
+    if getattr(args, "fail_on_warning", False) and health is HealthState.WARNING:
+        exit_code = 1
+
     if args.format == "json":
         print(json.dumps(status.to_dict(), indent=2))
-        return 0
+        return exit_code
 
     print("FL MCP Doctor")
     print("=============")
     print(f"Health: {status.health.value}")
     for check in status.checks:
         print(f"- {check.name}: {check.state.value} ({check.details})")
-    return 0
+    return exit_code
