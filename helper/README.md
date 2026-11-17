@@ -1,11 +1,11 @@
 # FL MCP Helper (macOS shell project)
 
-SwiftUI helper scaffold for future desktop workflows.
+SwiftUI helper that shows `fl-mcp doctor --format json` in a window.
 
-## Planned panels
-- Status panel (connection + runtime health)
-- Logs panel (CLI and endpoint event stream)
-- Actions panel placeholders for Install and Diagnostics
+## Panels
+- Status from the doctor payload
+- Logs from the doctor payload
+- Actions that refresh status and diagnostics
 
 ## Integration target
 The helper should consume payloads from the CLI status endpoints documented in `docs/interfaces.md`.

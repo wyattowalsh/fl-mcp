@@ -21,14 +21,20 @@ ROLLBACK_POLICY_BY_CLASSIFICATION: dict[RollbackClass, RollbackPolicyMetadata] =
     "fully_transactional": RollbackPolicyMetadata(
         classification="fully_transactional",
         requires_checkpoint=False,
-        supports_automatic_rollback=True,
-        description="Change is atomic and can be rolled back automatically.",
+        supports_automatic_rollback=False,
+        description=(
+            "Change is atomic in the host when the host says so. "
+            "The server does not revert it."
+        ),
     ),
     "checkpointed": RollbackPolicyMetadata(
         classification="checkpointed",
         requires_checkpoint=True,
-        supports_automatic_rollback=True,
-        description="Change requires explicit checkpoint before apply.",
+        supports_automatic_rollback=False,
+        description=(
+            "Change should have a host checkpoint before apply. "
+            "The server does not revert it."
+        ),
     ),
     "best_effort": RollbackPolicyMetadata(
         classification="best_effort",

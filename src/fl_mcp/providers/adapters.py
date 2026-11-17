@@ -73,13 +73,25 @@ class ProviderAdapter(Protocol):
         ...
 
 
-def _capabilities_for_domains(domains: list[str]) -> list[str]:
-    supported_domains = set(domains)
-    return sorted(spec.name for spec in FL_TOOL_SPECS if spec.domain in supported_domains)
-
-
 def _operation_capability_name(domain: str, operation: str) -> str:
     return f"{domain}_{operation}".replace("-", "_")
+
+
+def _capabilities_for_domains(domains: list[str]) -> list[str]:
+    """Return catalog tool names plus ``domain_operation`` capability aliases.
+
+    ``execute`` authorizes ``domain_operation`` with hyphens folded to
+    underscores. A few ``spec.name`` values differ from that key, so both stay
+    in the set. Mock dispatch continues to use ``spec.name``.
+    """
+    supported_domains = set(domains)
+    names: set[str] = set()
+    for spec in FL_TOOL_SPECS:
+        if spec.domain not in supported_domains:
+            continue
+        names.add(spec.name)
+        names.add(_operation_capability_name(spec.domain, spec.operation))
+    return sorted(names)
 
 
 def _task_state(value: object) -> ProviderTaskState:
@@ -348,6 +360,7 @@ def build_manifest(
 
     Capabilities are inferred from the FL tool spec surface that matches the
     given ``supported_domains`` unless an operation-specific list is supplied.
+    When a tool name differs from ``domain_operation``, both names are included.
 
     Args:
         name: Unique provider identifier.

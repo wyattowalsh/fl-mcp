@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field, ValidationError
 from fl_mcp.schemas.bridge import BridgeLiveRequest, BridgeLiveResponse
 
 BRIDGE_DIR_ENV = "FL_MCP_FL_STUDIO_BRIDGE_DIR"
-DEFAULT_BRIDGE_DIR = str(Path.home() / ".fl-mcp" / "flstudio-bridge")
 POLL_INTERVAL_ENV = "FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS"
 DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 DEFAULT_FILE_BRIDGE_TIMEOUT_SECONDS = 15.0
@@ -148,7 +147,9 @@ def _stored_request_fingerprint(
 ) -> str | None:
     if request_path.exists():
         try:
-            envelope = FileBridgeEnvelope.model_validate_json(request_path.read_text(encoding="utf-8"))
+            envelope = FileBridgeEnvelope.model_validate_json(
+                request_path.read_text(encoding="utf-8")
+            )
         except (OSError, json.JSONDecodeError, ValidationError):
             return None
         return _request_fingerprint(envelope.request)
@@ -221,9 +222,14 @@ def _request_id_for_bridge(request: BridgeLiveRequest) -> tuple[str, str | None]
 
 
 def bridge_dir_from_environment() -> Path:
-    """Return the request/response directory used by the FL Studio script bridge."""
+    """Return the request/response directory shared with the installed controller."""
 
-    return Path(os.getenv(BRIDGE_DIR_ENV, DEFAULT_BRIDGE_DIR)).expanduser()
+    configured = os.getenv(BRIDGE_DIR_ENV)
+    if configured:
+        return Path(configured).expanduser()
+    from fl_mcp.bridge.bundle import default_file_bridge_dir
+
+    return default_file_bridge_dir()
 
 
 def ensure_private_bridge_dir(bridge_dir: Path) -> Path:
@@ -355,7 +361,12 @@ def run_file_bridge(
             message=str(exc),
             result={"bridge_dir": str(requested_dir.expanduser())},
         )
-    if request.idempotency_key is not None and _sanitize_idempotency_key(request.idempotency_key) is None:
+    sanitized_key = (
+        None
+        if request.idempotency_key is None
+        else _sanitize_idempotency_key(request.idempotency_key)
+    )
+    if request.idempotency_key is not None and sanitized_key is None:
         return _invalid_idempotency_key_response(request)
 
     request_id, idempotency_key = _request_id_for_bridge(request)

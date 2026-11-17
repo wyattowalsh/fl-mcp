@@ -13,8 +13,24 @@ from fl_mcp.providers.runtime import (
     get_provider_registry,
     reset_provider_registry,
 )
-from fl_mcp.tools.fl_surface import FL_TOOL_SPECS, PROVIDER_MATRIX
+from fl_mcp.tools.fl_surface import (
+    FL_TOOL_BY_CHANGE,
+    FL_TOOL_HANDLERS,
+    FL_TOOL_SPECS,
+    PROVIDER_MATRIX,
+    FLToolSpec,
+)
 from fl_mcp.tools.public import manage_providers
+
+# spec.name stays stable; execute authorizes the longer domain_operation key.
+_DOMAIN_OPERATION_ALIASES = (
+    ("channels", "list_channels", "channels_list", "channels_list_channels"),
+    ("patterns", "list_patterns", "patterns_list", "patterns_list_patterns"),
+    ("patterns", "select_pattern", "patterns_select", "patterns_select_pattern"),
+    ("patterns", "create_pattern", "patterns_create", "patterns_create_pattern"),
+    ("patterns", "rename_pattern", "patterns_rename", "patterns_rename_pattern"),
+    ("plugins", "list_plugins", "plugins_list", "plugins_list_plugins"),
+)
 
 
 @dataclass
@@ -222,7 +238,14 @@ def test_builtin_provider_manifests_align_with_fl_surface_catalog() -> None:
     providers_by_name = {provider.manifest.name: provider.manifest for provider in providers}
     assert set(providers_by_name) == set(PROVIDER_MATRIX)
 
-    all_tool_names = {spec.name for spec in FL_TOOL_SPECS}
+    def capability_names_for(specs: list[FLToolSpec]) -> set[str]:
+        names: set[str] = set()
+        for spec in specs:
+            names.add(spec.name)
+            names.add(f"{spec.domain}_{spec.operation}".replace("-", "_"))
+        return names
+
+    all_tool_names = capability_names_for(list(FL_TOOL_SPECS))
     expected_task_kinds = {
         "flapi-live": set(),
         "piano-roll-script": set(),
@@ -252,10 +275,51 @@ def test_builtin_provider_manifests_align_with_fl_surface_catalog() -> None:
         if name == "mock":
             assert capabilities == all_tool_names
             continue
-        expected_capabilities = {
-            spec.name for spec in FL_TOOL_SPECS if spec.domain in supported_domains
-        }
+        expected_capabilities = capability_names_for(
+            [spec for spec in FL_TOOL_SPECS if spec.domain in supported_domains]
+        )
         assert capabilities == expected_capabilities
+
+
+def test_provider_manifests_keep_spec_names_and_domain_operation_aliases() -> None:
+    manifests = {provider.manifest.name: provider.manifest for provider in builtin_providers()}
+    assert "flapi-live" in manifests
+
+    for domain, operation, tool_name, alias in _DOMAIN_OPERATION_ALIASES:
+        spec = FL_TOOL_BY_CHANGE[(domain, operation)]
+        assert spec.name == tool_name
+        assert tool_name in FL_TOOL_HANDLERS
+        assert alias not in FL_TOOL_HANDLERS
+        for manifest in manifests.values():
+            capabilities = set(manifest.capabilities)
+            if domain in manifest.supported_domains:
+                assert tool_name in capabilities
+                assert alias in capabilities
+            else:
+                assert alias not in capabilities
+
+
+def test_domain_operation_alias_is_not_unsupported_capability(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FL_MCP_BRIDGE_MODE", "mock")
+    reset_provider_registry()
+    try:
+        registry = get_provider_registry(load_entry_points=False)
+        for domain, operation, tool_name, alias in _DOMAIN_OPERATION_ALIASES:
+            assert registry.supports("flapi-live", tool_name)
+            assert registry.supports("flapi-live", alias)
+            result = registry.execute(
+                "flapi-live",
+                domain=domain,
+                operation=operation,
+                payload={},
+            )
+            assert result.success is False
+            assert result.error_code != "unsupported_capability"
+            assert result.error_code == "live_provider_unavailable"
+    finally:
+        reset_provider_registry()
 
 
 def test_flapi_live_fails_closed_without_live_bridge(

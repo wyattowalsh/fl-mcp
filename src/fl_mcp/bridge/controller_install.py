@@ -138,7 +138,9 @@ def sync_controller_script(
         return _result(
             status="error",
             backup_file=backup_file,
-            remediation="Re-run `fl-mcp install --sync-controller` after resolving file permissions.",
+            remediation=(
+                "Re-run `fl-mcp install --sync-controller` after resolving file permissions."
+            ),
             error=(
                 f"Installed controller script at {target_file} does not byte-match "
                 f"the bundled source at {bundled_source}."

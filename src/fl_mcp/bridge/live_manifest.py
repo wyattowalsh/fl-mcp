@@ -122,7 +122,10 @@ def generate_live_support_matrix_markdown(*, output_path: Path | None = None) ->
         "",
         "## Per-operation tiers",
         "",
-        "| operation_id | live_support_tier | verified_live | attemptable | selected_controller_compat |",
+        (
+            "| operation_id | live_support_tier | verified_live | attemptable | "
+            "selected_controller_compat |"
+        ),
         "| --- | --- | --- | --- | --- |",
     ]
     for entry in manifest_entries():

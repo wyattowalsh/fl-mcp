@@ -7,8 +7,8 @@ from collections import Counter, defaultdict
 from typing import Literal
 
 from fl_mcp.bridge.fl_studio import DEFAULT_BRIDGE, BridgeExecutionResult
-from fl_mcp.exceptions import ProviderError
 from fl_mcp.config.settings import settings
+from fl_mcp.exceptions import ProviderError
 from fl_mcp.middleware.safety import effective_safety_mode, enforce_safety_mode
 from fl_mcp.operations import OperationPayloadValidationError, execute_change, validate_change
 from fl_mcp.schemas import DomainChange, TransactionEnvelope, TransactionResult
@@ -100,7 +100,9 @@ def _finalize_all_or_nothing_failure(
         report["success"] = False
         report["status"] = "failed"
         report["error_code"] = ExecutionErrorCode.EXECUTION_FAILED
-        report["message"] = "Change was reverted due to all-or-nothing transaction failure."
+        report["message"] = (
+            "All-or-nothing transaction failed. The server did not revert earlier changes."
+        )
         report["execution_id"] = None
 
     return 0, len(execution_reports)

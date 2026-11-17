@@ -954,7 +954,10 @@ def run_selected_controller_bridge(
             ),
         )
 
-    if request.idempotency_key is not None and _sanitize_idempotency_key(request.idempotency_key) is None:
+    if (
+        request.idempotency_key is not None
+        and _sanitize_idempotency_key(request.idempotency_key) is None
+    ):
         return _invalid_idempotency_key_response(request)
 
     idempotency_key = _sanitize_idempotency_key(request.idempotency_key)

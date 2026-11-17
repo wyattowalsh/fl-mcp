@@ -430,10 +430,15 @@ def test_selected_controller_lock_breaks_stale_dead_pid_lock(tmp_path: Path) -> 
     assert not lock_path.exists()
 
 
-def test_selected_controller_lock_breaks_stale_age_lock(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_selected_controller_lock_breaks_stale_age_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     lock_path = tmp_path / ".mcp_command.lock"
     created_at = 1000.0
     lock_path.write_text(f"pid={os.getpid()} created_at={created_at}\n", encoding="utf-8")
-    monkeypatch.setattr("fl_mcp.bridge.selected_controller_client.time.time", lambda: created_at + 120.0)
+    monkeypatch.setattr(
+        "fl_mcp.bridge.selected_controller_client.time.time",
+        lambda: created_at + 120.0,
+    )
 
     assert _lock_is_stale(lock_path) is True

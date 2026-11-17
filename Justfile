@@ -26,3 +26,10 @@ package:
     uv run --with twine==6.2.0 twine check dist/*
 
 ci: quality test docs package
+
+verify:
+    uv run pytest tests/contract/test_public_surface.py -q
+    uv run fl-mcp doctor --format json
+    pnpm --dir docs --ignore-workspace check
+    python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode mock --source local --repo-root . --format json
+    python3 skills/fl-mcp-production-flow/scripts/setup-check.py --mode live --source local --repo-root . --format json

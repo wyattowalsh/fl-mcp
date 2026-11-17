@@ -127,6 +127,13 @@ def test_apply_changes_all_or_nothing_fails_when_any_change_fails() -> None:
     reports = result.diff_summary["reports"]
     assert isinstance(reports, list)
     assert all(report["success"] is False for report in reports)
+    assert reports[0]["message"] == (
+        "All-or-nothing transaction failed. The server did not revert earlier changes."
+    )
+    assert "was reverted" not in reports[0]["message"]
+    assert result.per_domain_results["mixer"] == "failed_checkpoint_required"
+    assert result.per_domain_results["transport"] == "failed_manual_intervention"
+    assert "failed_rolled_back" not in result.per_domain_results.values()
     assert result.errors
 
 

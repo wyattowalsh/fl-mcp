@@ -16,9 +16,12 @@ from typing import Any, cast
 import pytest
 
 from fl_mcp.bridge import controller_bridge, host_client
-from fl_mcp.bridge.bundle import _active_user_data_dir, bridge_runner_descriptor
+from fl_mcp.bridge.bundle import (
+    _active_user_data_dir,
+    bridge_runner_descriptor,
+    default_file_bridge_dir,
+)
 from fl_mcp.bridge.host_client import (
-    DEFAULT_BRIDGE_DIR,
     FileBridgeEnvelope,
     bridge_dir_from_environment,
     ensure_private_bridge_dir,
@@ -82,9 +85,9 @@ def test_default_file_bridge_dir_is_private_user_directory(
     default_dir = bridge_dir_from_environment()
     secure_dir = ensure_private_bridge_dir(tmp_path / "bridge")
 
-    assert str(default_dir) == DEFAULT_BRIDGE_DIR
-    assert default_dir.name == "flstudio-bridge"
-    assert default_dir.parent.name == ".fl-mcp"
+    assert default_dir == default_file_bridge_dir()
+    assert default_dir.name == "bridge"
+    assert default_dir.parent.name == "FL MCP Bridge"
     assert secure_dir.is_dir()
     if os.name == "posix":
         assert stat.S_IMODE(secure_dir.stat().st_mode) == 0o700
@@ -791,6 +794,22 @@ def test_fl_controller_script_allows_default_bridge_when_host_stat_fails(
         assert module._ensure_private_bridge_dir(bridge_dir) == bridge_dir
 
 
+def test_fl_controller_script_rejects_symlink_on_default_bridge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    monkeypatch.delenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", raising=False)
+    monkeypatch.setattr(module, "__file__", str(tmp_path / "device_FL_MCP_Bridge.py"))
+    target = tmp_path / "elsewhere"
+    target.mkdir()
+    bridge_dir = tmp_path / "bridge"
+    bridge_dir.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(ValueError, match="symlink"):
+        module._ensure_private_bridge_dir(str(bridge_dir))
+
+
 def test_fl_controller_script_keeps_env_bridge_dir_strict(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -960,9 +979,10 @@ def test_fl_controller_script_missing_api_returns_structured_failure() -> None:
 def test_fl_controller_script_rejected_payload_returns_structured_failure() -> None:
     module = _load_controller_script()
     dynamic_module = cast(Any, module)
-    dynamic_module.mixer = SimpleNamespace(
-        setTrackVolume=lambda track, value, mode: None,
-    )
+    dynamic_module._FL_MODULES = {
+        **dynamic_module._FL_MODULES,
+        "mixer": SimpleNamespace(setTrackVolume=lambda track, value, mode: None),
+    }
 
     response = module._handle_request(
         {

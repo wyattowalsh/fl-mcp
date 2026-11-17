@@ -61,9 +61,10 @@ The server defaults to deterministic mock mode, so MCP clients can discover all
 12 visible tools and execute the internal 216-operation catalog without FL
 Studio.
 
-For local stdio use, authentication is optional. For HTTP deployments with
-`--environment production` or `--environment prod`, set `FL_MCP_AUTH_TOKEN`; the
-server refuses to launch production HTTP without it.
+For local stdio use, authentication is optional. Every real `--mode http`
+launch requires `FL_MCP_AUTH_TOKEN`, including `--environment dev`. Set
+`FL_MCP_HTTP_ALLOW_UNAUTHENTICATED=true` only for a loopback bind. The mode
+choices are `stdio` and `http`.
 
 ## Live FL Studio Mode
 

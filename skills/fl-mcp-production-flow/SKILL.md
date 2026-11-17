@@ -61,7 +61,7 @@ Gallery rules:
 
 | `$ARGUMENTS` | Mode | Action |
 | --- | --- | --- |
-| `setup [mock|live|source|published]` | Setup | Verify FL MCP installation, CLI, client setup, and optional live bridge readiness |
+| `setup` with `--mode mock\|live` and `--source auto\|local\|published` | Setup | Verify FL MCP installation, CLI, client setup, and optional live bridge readiness |
 | `plan <goal>` | Plan | Create a production workflow plan without mutation |
 | `rehearse <workflow>` | Rehearse | Use mock-mode rehearsal before live work |
 | `execute <workflow>` | Execute | Execute only after Setup Gate and live/mock intent are clear |

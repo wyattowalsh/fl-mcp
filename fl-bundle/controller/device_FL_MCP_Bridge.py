@@ -125,7 +125,7 @@ def _ensure_private_bridge_dir(path: str) -> str:
                 current_stat = os.stat(path)
             if stat.S_IMODE(current_stat.st_mode) != _PRIVATE_DIR_MODE:
                 raise ValueError(f"Bridge directory permissions must be 0700: {path}.")
-    except Exception as exc:
+    except SystemError as exc:
         if not _using_default_bridge_dir(path):
             raise
         _log(
@@ -180,7 +180,7 @@ def _first_callable(module, names: tuple[str, ...]):
 
 
 def _fl_module(name: str):
-    return globals().get(name) or _FL_MODULES.get(name)
+    return _FL_MODULES.get(name)
 
 
 _DOMAIN_MODULES = {
@@ -280,7 +280,10 @@ def _candidate_names(operation: str) -> tuple[str, ...]:
 def _candidate_records(domain: str, operation: str) -> list[tuple[str, tuple[str, ...]]]:
     records = list(_EXPLICIT_CANDIDATES.get((domain, operation), ()))
     generated = _candidate_names(operation)
-    for module_name in _DOMAIN_MODULES.get(domain, (domain,)):
+    mapped_modules = _DOMAIN_MODULES.get(domain)
+    if mapped_modules is None:
+        return []
+    for module_name in mapped_modules:
         records.append((module_name, generated))
     deduped = []
     seen = set()
@@ -490,6 +493,15 @@ def _execute_forced_live_adapter(request: dict, payload: dict) -> dict:
     if path_error is not None:
         return path_error
 
+    if domain not in _DOMAIN_MODULES:
+        return _response(
+            request,
+            success=False,
+            error_code="unsupported_domain",
+            message=f"Domain '{domain}' is not supported by the FL MCP Bridge.",
+            result={"operation_id": f"{domain}.{operation}"},
+        )
+
     candidates = _candidate_records(domain, operation)
     metadata = _attempt_metadata(candidates)
 
@@ -528,6 +540,18 @@ def _execute_forced_live_adapter(request: dict, payload: dict) -> dict:
             )
         except Exception:
             pass
+
+    if domain == "transport" and operation == "pause" and not _is_playing():
+        return _response(
+            request,
+            success=True,
+            message="Transport is already stopped; pause did not start playback.",
+            result={
+                "operation_id": f"{domain}.{operation}",
+                "playing": False,
+                **metadata,
+            },
+        )
 
     if domain == "transport" and operation in {"play", "pause", "stop"}:
         try:

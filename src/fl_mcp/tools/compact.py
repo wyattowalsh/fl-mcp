@@ -26,8 +26,8 @@ from fl_mcp.bridge.live_surface import (
 from fl_mcp.config import RuntimeConfig
 from fl_mcp.config.settings import settings
 from fl_mcp.exceptions import ProviderError
-from fl_mcp.middleware.safety import SafetyModeError, enforce_operation_safety_mode
 from fl_mcp.graph.model import ProjectGraph
+from fl_mcp.middleware.safety import SafetyModeError, enforce_operation_safety_mode
 from fl_mcp.plugin_profiles.operations import (
     PROFILE_OPERATION_ID_SET,
     is_plugin_profile_operation,

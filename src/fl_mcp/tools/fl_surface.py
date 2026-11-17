@@ -1595,7 +1595,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="fully_transactional",
         tags=("piano-roll", "edit"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     _spec(
         "piano_roll_clear",
@@ -1809,7 +1809,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="checkpointed",
         tags=("plugins", "edit"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     _spec(
         "plugins_prev_preset",
@@ -2291,7 +2291,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="checkpointed",
         tags=("general", "project"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     _spec(
         "general_save_project_as",
@@ -2313,7 +2313,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="best_effort",
         tags=("general", "project"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     _spec(
         "general_redo",
@@ -2324,7 +2324,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="best_effort",
         tags=("general", "project"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     # --- general domain: granular FL Studio API surface ---
     _spec(
@@ -2387,7 +2387,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="best_effort",
         tags=("general", "undo"),
-        annotations=_annotations(read_only=False),
+        annotations=_annotations(read_only=False, destructive=True),
     ),
     _spec(
         "general_get_undo_history_pos",
@@ -2670,7 +2670,7 @@ FL_TOOL_SPECS: tuple[FLToolSpec, ...] = (
         "transaction",
         rollback_class="checkpointed",
         tags=("automation", "edit"),
-        annotations=_annotations(read_only=False, idempotent=True),
+        annotations=_annotations(read_only=False, destructive=True, idempotent=True),
     ),
     _spec(
         "automation_read_points",

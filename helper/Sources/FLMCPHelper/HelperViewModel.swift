@@ -102,7 +102,7 @@ final class HelperViewModel: ObservableObject {
         isRunning = true
         lastErrorText = nil
         statusText = "Running \(endpoint)..."
-        logLines.append("Invoking: fl-mcp diagnostics shell --endpoint \(endpoint)")
+        logLines.append("Invoking: fl-mcp doctor --format json")
 
         let runner = commandRunner
         Task {
@@ -154,7 +154,8 @@ final class HelperViewModel: ObservableObject {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.currentDirectoryURL = repositoryRootURL()
-        process.arguments = ["uv", "run", "fl-mcp", "diagnostics", "shell", "--endpoint", endpoint]
+        process.arguments = ["uv", "run", "fl-mcp", "doctor", "--format", "json"]
+        _ = endpoint
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -170,11 +171,13 @@ final class HelperViewModel: ObservableObject {
             in: .whitespacesAndNewlines
         )
 
-        guard process.terminationStatus == 0 else {
-            throw CommandExecutionError.executionFailed(
-                status: Int(process.terminationStatus),
-                stderr: stderrText
-            )
+        if process.terminationStatus != 0 {
+            if (try? HelperViewModel.decodePayload(from: stdoutData)) == nil {
+                throw CommandExecutionError.executionFailed(
+                    status: Int(process.terminationStatus),
+                    stderr: stderrText
+                )
+            }
         }
         return stdoutData
     }

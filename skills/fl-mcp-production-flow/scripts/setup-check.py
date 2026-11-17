@@ -124,6 +124,31 @@ def doctor_check_ok(doctor_result: dict[str, Any]) -> bool:
     return doctor_result["returncode"] == 0
 
 
+def installed_controller_ready(install_result: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
+    """Return whether install dry-run points at a controller file and bridge directory."""
+
+    stdout = install_result.get("stdout", "")
+    try:
+        payload = json.loads(stdout) if isinstance(stdout, str) and stdout else {}
+    except json.JSONDecodeError:
+        return False, {"reason": "install dry-run did not return JSON"}
+    if not isinstance(payload, dict):
+        return False, {"reason": "install dry-run JSON was not an object"}
+
+    controller = payload.get("fl_studio_controller")
+    bridge = payload.get("bridge")
+    target_file = controller.get("target_file") if isinstance(controller, dict) else None
+    bridge_dir = bridge.get("bridge_dir") if isinstance(bridge, dict) else None
+    target_ok = isinstance(target_file, str) and Path(target_file).is_file()
+    bridge_ok = isinstance(bridge_dir, str) and Path(bridge_dir).is_dir()
+    return target_ok and bridge_ok, {
+        "target_file": target_file,
+        "bridge_dir": bridge_dir,
+        "target_ok": target_ok,
+        "bridge_ok": bridge_ok,
+    }
+
+
 def add_check(
     checks: list[dict[str, Any]],
     name: str,
@@ -273,6 +298,58 @@ def main() -> int:
             evidence=evidence,
         )
 
+        if args.mode == "live":
+            install_result = run_command(
+                fl_mcp_command(source, repo_root, "install", "--dry-run"),
+                cwd=repo_root,
+                timeout=args.timeout,
+            )
+            add_check(
+                checks,
+                "install_dry_run",
+                bool(install_result["ok"]),
+                details=install_result,
+                missing_step=(
+                    "Run `fl-mcp install --dry-run` and configure the reported bridge environment."
+                ),
+                missing_steps=missing_steps,
+                evidence=evidence,
+            )
+            # Stat artifacts before doctor. Doctor can create the default bridge directory.
+            controller_path, bridge_path = parse_install_dry_run_paths(
+                str(install_result.get("stdout", ""))
+            )
+            artifacts = live_artifact_readiness(
+                controller_script=controller_path,
+                bridge_dir=bridge_path,
+            )
+            controller_step = next(
+                (step for step in artifacts["missing_steps"] if "controller script" in step),
+                None,
+            )
+            bridge_step = next(
+                (step for step in artifacts["missing_steps"] if "bridge directory" in step),
+                None,
+            )
+            add_check(
+                checks,
+                "controller_script_present",
+                bool(artifacts["controller_script_present"]),
+                details={"path": str(controller_path) if controller_path else None},
+                missing_step=controller_step,
+                missing_steps=missing_steps,
+                evidence=evidence,
+            )
+            add_check(
+                checks,
+                "bridge_directory_present",
+                bool(artifacts["bridge_directory_present"]),
+                details={"path": str(bridge_path) if bridge_path else None},
+                missing_step=bridge_step,
+                missing_steps=missing_steps,
+                evidence=evidence,
+            )
+
         doctor_result = run_command(
             fl_mcp_command(source, repo_root, "doctor", "--format", "json"),
             cwd=repo_root,
@@ -307,6 +384,19 @@ def main() -> int:
                 details=install_result,
                 missing_step=(
                     "Run `fl-mcp install --dry-run` and configure the reported bridge environment."
+                ),
+                missing_steps=missing_steps,
+                evidence=evidence,
+            )
+            controller_ok, controller_details = installed_controller_ready(install_result)
+            add_check(
+                checks,
+                "installed_controller",
+                controller_ok,
+                details=controller_details,
+                missing_step=(
+                    "Install the FL MCP Bridge controller and create its bridge directory "
+                    "before attempting live changes."
                 ),
                 missing_steps=missing_steps,
                 evidence=evidence,
@@ -356,7 +446,7 @@ def main() -> int:
         "stdio_dry_run",
         "doctor_json",
     }
-    required_live = required_mock | {"install_dry_run"}
+    required_live = required_mock | {"install_dry_run", "installed_controller"}
     ok_by_name = {check["name"]: bool(check["ok"]) for check in checks}
     safe_to_execute_mock = all(ok_by_name.get(name, False) for name in required_mock)
     safe_to_attempt_live = args.mode == "live" and all(

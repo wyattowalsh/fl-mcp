@@ -300,9 +300,8 @@ class TestTransactionErrors:
         assert len(reports) == 1
         assert reports[0]["error_code"] == "unsupported_domain"
 
-    def test_apply_changes_all_or_nothing_reverts_on_single_failure(self) -> None:
-        """Under all-or-nothing policy, a single failure causes ALL changes
-        to be marked as failed, even previously successful ones."""
+    def test_apply_changes_all_or_nothing_does_not_revert_on_single_failure(self) -> None:
+        """A later failure marks earlier changes failed without claiming a revert."""
         envelope = TransactionEnvelope.model_validate(
             {
                 "request_id": "err-aon",
@@ -325,10 +324,19 @@ class TestTransactionErrors:
             }
         )
         result = apply_changes(envelope)
+        reports = result.diff_summary["reports"]
         assert result.status == "failed"
         assert result.diff_summary["applied_count"] == 0
         assert result.diff_summary["failed_count"] == 2
         assert result.checkpoint_id is None
+        assert isinstance(reports, list)
+        assert reports[0]["message"] == (
+            "All-or-nothing transaction failed. The server did not revert earlier changes."
+        )
+        assert "was reverted" not in reports[0]["message"]
+        assert result.per_domain_results["mixer"] == "failed_checkpoint_required"
+        assert result.per_domain_results["transport"] == "failed_manual_intervention"
+        assert "failed_rolled_back" not in result.per_domain_results.values()
 
     def test_plan_changes_empty_changes_warns(self) -> None:
         """Planning with an empty change list produces a warning."""

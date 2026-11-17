@@ -52,7 +52,7 @@ FL MCP supports two primary transports. Security expectations differ by mode.
 
 ### Streamable HTTP
 
-- Enabled with `fl-mcp server run --mode streamable-http` (or `--mode http`).
+- Enabled with `fl-mcp server run --mode http`.
 - Defaults bind to loopback (`FL_MCP_HTTP_HOST=127.0.0.1`,
   `FL_MCP_HTTP_PORT=8765`, path `/mcp`).
 - **Fail-closed default:** when `FL_MCP_AUTH_TOKEN` is unset, the server

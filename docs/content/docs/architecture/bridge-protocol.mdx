@@ -18,7 +18,7 @@ the typed response file from inside the DAW Python host.
 | `FL_MCP_BRIDGE_MODE` | No | `mock` | Set to `live` to enable subprocess execution |
 | `FL_MCP_FL_STUDIO_BRIDGE_CMD` | Yes (live) | — | Absolute path or command to the bridge executable |
 | `FL_MCP_FL_STUDIO_BRIDGE_TIMEOUT_SECONDS` | No | `20.0` | Outer per-operation subprocess timeout in seconds |
-| `FL_MCP_FL_STUDIO_BRIDGE_DIR` | No | `~/.fl-mcp/flstudio-bridge` | Private request/response directory shared by `host_client` and the FL Studio MIDI script. The installer may report a script-local `bridge/` path; set this variable explicitly when the DAW script and MCP host must share a non-default directory. |
+| `FL_MCP_FL_STUDIO_BRIDGE_DIR` | No | Installed `Settings/Hardware/FL MCP Bridge/bridge` | Request/response directory. `host_client`, install, and doctor use the hardware bridge directory. The MIDI script, when the variable is unset, polls `bridge/` beside its own file. Set the variable when those locations differ. |
 | `FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS` | No | `0.05` | MCP-side response-file polling interval used by `host_client` |
 | `FL_MCP_FL_STUDIO_BRIDGE_LOG` | No | unset | Set to `1`, `true`, `yes`, or `on` to enable persistent DAW-side diagnostic logging |
 | `FL_MCP_BRIDGE_IDEMPOTENCY_TTL_SECONDS` | No | `3600` | Seconds to honor `completed-{request_id}.json` replay entries after a successful idempotent roundtrip |

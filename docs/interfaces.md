@@ -1,28 +1,23 @@
 # CLI ↔ Helper Interface Contract
 
-This document defines a first-pass contract between FL MCP CLI diagnostics commands and the macOS helper UI.
+The SwiftPM helper reads JSON from `fl-mcp doctor --format json`. There is no helper HTTP server.
 
-## Endpoints
+## Command
 
-- `POST /v1/helper/status`
-  - Used by helper to fetch current runtime status summary.
-- `POST /v1/helper/diagnostics`
-  - Used by helper to request detailed diagnostics output.
+```bash
+uv run fl-mcp doctor --format json
+```
 
-The endpoint constants are also defined in `src/fl_mcp/interfaces/status.py` as:
-
-- `HELPER_STATUS_ENDPOINT`
-- `HELPER_DIAGNOSTICS_ENDPOINT`
+Doctor exits 0 for `ok` and `warning`, and exits 1 for `error`. The helper decodes stdout in both cases when the body is a status payload.
 
 ## Payload shape
-
-All status payloads must conform to this JSON structure:
 
 ```json
 {
   "service": "fl-mcp",
   "health": "ok | warning | error",
   "timestamp": "ISO-8601 UTC",
+  "endpoint": "/v1/helper/status",
   "checks": [
     {
       "name": "check-name",
@@ -31,24 +26,12 @@ All status payloads must conform to this JSON structure:
     }
   ],
   "logs": ["string lines"],
-  "endpoint": "/v1/helper/status"
+  "errors": ["string lines"]
 }
 ```
 
-## CLI commands mapped to helper actions
+`endpoint` is a payload label from `src/fl_mcp/interfaces/status.py`. It is not an HTTP route.
 
-- `fl-mcp diagnostics shell --endpoint status`
-  - Emits payload for helper status panel.
-- `fl-mcp diagnostics shell --endpoint diagnostics`
-  - Emits payload for helper diagnostics panel.
-- `fl-mcp doctor --format json`
-  - Emits richer diagnostics payload that can be surfaced in logs.
+## Helper actions
 
-## Helper action stubs
-
-In `helper/Sources/FLMCPHelper/HelperViewModel.swift`, placeholders are provided for:
-
-- `runInstallPlaceholder()`
-- `runDiagnosticsPlaceholder()`
-
-These methods should eventually execute CLI subprocess calls and decode this payload format.
+`helper/Sources/FLMCPHelper/HelperViewModel.swift` runs the doctor command from `fetchStatus()` and `runDiagnostics()`.

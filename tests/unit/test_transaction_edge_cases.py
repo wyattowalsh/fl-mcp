@@ -496,7 +496,7 @@ class TestMixedSuccessFailureAllowPartial:
         assert result.per_domain_results["transport"] == "applied"
         assert result.per_domain_results["nonexistent"] == "failed_checkpoint_required"
 
-    def test_all_or_nothing_reverts_successful_on_any_failure(self) -> None:
+    def test_all_or_nothing_does_not_revert_successful_changes_on_failure(self) -> None:
         envelope = _envelope(
             changes=[
                 _change(domain="mixer", operation="set_volume", rollback_class="checkpointed"),
@@ -511,8 +511,17 @@ class TestMixedSuccessFailureAllowPartial:
         )
         result = apply_changes(envelope)
 
+        reports = result.diff_summary["reports"]
         assert result.status == "failed"
         assert result.diff_summary["applied_count"] == 0
         assert result.diff_summary["failed_count"] == 2
         assert result.checkpoint_id is None
         assert "applied" not in set(result.per_domain_results.values())
+        assert isinstance(reports, list)
+        assert reports[0]["message"] == (
+            "All-or-nothing transaction failed. The server did not revert earlier changes."
+        )
+        assert "was reverted" not in reports[0]["message"]
+        assert result.per_domain_results["mixer"] == "failed_checkpoint_required"
+        assert result.per_domain_results["transport"] == "failed_manual_intervention"
+        assert "failed_rolled_back" not in result.per_domain_results.values()
