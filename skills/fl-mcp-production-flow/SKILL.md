@@ -138,8 +138,8 @@ needed reference:
 
 Use Setup mode to prove the local FL MCP environment is ready.
 
-1. Classify target as mock, live, source checkout, or published package.
-2. Run `scripts/setup-check.py` with the matching `--mode` and `--source`.
+1. Choose `--mode mock` or `--mode live`, and `--source auto`, `local`, or `published`.
+2. Run `scripts/setup-check.py` with those flags.
 3. Report status, missing steps, safe execution flags, and client config.
 4. For live mode, include bridge setup and controller-script readiness without
    mutating FL Studio.

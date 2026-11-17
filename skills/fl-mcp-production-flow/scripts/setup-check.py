@@ -124,28 +124,84 @@ def doctor_check_ok(doctor_result: dict[str, Any]) -> bool:
     return doctor_result["returncode"] == 0
 
 
+def _install_path(value: object) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    return Path(value).expanduser()
+
+
 def installed_controller_ready(install_result: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-    """Return whether install dry-run points at a controller file and bridge directory."""
+    """Return whether the installed controller script and bridge directory exist.
+
+    Doctor health ``warning`` does not satisfy this check. A missing controller
+    script or a missing bridge directory is listed in ``missing_steps``. The
+    controller path is ``fl_studio_controller.target_file``, the copy FL Studio
+    loads, not the bundled package source.
+    """
 
     stdout = install_result.get("stdout", "")
     try:
         payload = json.loads(stdout) if isinstance(stdout, str) and stdout else {}
     except json.JSONDecodeError:
-        return False, {"reason": "install dry-run did not return JSON"}
+        payload = None
+
+    controller_step = (
+        "Install the FL MCP Bridge controller script reported by "
+        "`fl-mcp install --dry-run` with `fl-mcp install --sync-controller`, then select "
+        "FL MCP Bridge in FL Studio MIDI settings."
+    )
+    bridge_step = (
+        "Create the private FL MCP bridge directory reported by "
+        "`fl-mcp install --dry-run` before attempting live FL Studio work."
+    )
     if not isinstance(payload, dict):
-        return False, {"reason": "install dry-run JSON was not an object"}
+        return False, {
+            "reason": "install dry-run did not return JSON",
+            "target_file": None,
+            "bridge_dir": None,
+            "target_ok": False,
+            "bridge_ok": False,
+            "missing_steps": [controller_step, bridge_step],
+        }
 
     controller = payload.get("fl_studio_controller")
     bridge = payload.get("bridge")
+    environment = payload.get("environment")
     target_file = controller.get("target_file") if isinstance(controller, dict) else None
-    bridge_dir = bridge.get("bridge_dir") if isinstance(bridge, dict) else None
-    target_ok = isinstance(target_file, str) and Path(target_file).is_file()
-    bridge_ok = isinstance(bridge_dir, str) and Path(bridge_dir).is_dir()
+    bridge_value: object = None
+    if isinstance(environment, dict):
+        bridge_value = environment.get("FL_MCP_FL_STUDIO_BRIDGE_DIR")
+    if not isinstance(bridge_value, str) or not bridge_value.strip():
+        bridge_value = bridge.get("bridge_dir") if isinstance(bridge, dict) else None
+
+    target_path = _install_path(target_file)
+    bridge_path = _install_path(bridge_value)
+    target_ok = target_path is not None and target_path.is_file()
+    bridge_ok = bridge_path is not None and bridge_path.is_dir()
+    missing_steps: list[str] = []
+    if not target_ok:
+        location = str(target_path) if target_path is not None else "the installer-reported target"
+        missing_steps.append(
+            "Install the FL MCP Bridge controller script at "
+            f"{location} with `fl-mcp install --sync-controller`, then select "
+            "FL MCP Bridge in FL Studio MIDI settings."
+        )
+    if not bridge_ok:
+        location = (
+            str(bridge_path)
+            if bridge_path is not None
+            else "the installer-reported bridge directory"
+        )
+        missing_steps.append(
+            "Create the private FL MCP bridge directory at "
+            f"{location} before attempting live FL Studio work."
+        )
     return target_ok and bridge_ok, {
-        "target_file": target_file,
-        "bridge_dir": bridge_dir,
+        "target_file": target_file if isinstance(target_file, str) else None,
+        "bridge_dir": bridge_value if isinstance(bridge_value, str) else None,
         "target_ok": target_ok,
         "bridge_ok": bridge_ok,
+        "missing_steps": missing_steps,
     }
 
 
@@ -315,40 +371,25 @@ def main() -> int:
                 missing_steps=missing_steps,
                 evidence=evidence,
             )
-            # Stat artifacts before doctor. Doctor can create the default bridge directory.
-            controller_path, bridge_path = parse_install_dry_run_paths(
-                str(install_result.get("stdout", ""))
-            )
-            artifacts = live_artifact_readiness(
-                controller_script=controller_path,
-                bridge_dir=bridge_path,
-            )
-            controller_step = next(
-                (step for step in artifacts["missing_steps"] if "controller script" in step),
-                None,
-            )
-            bridge_step = next(
-                (step for step in artifacts["missing_steps"] if "bridge directory" in step),
-                None,
-            )
+            # Stat before doctor. Doctor can create the default bridge directory.
+            controller_ok, controller_details = installed_controller_ready(install_result)
+            artifact_steps = [
+                step
+                for step in controller_details.get("missing_steps", [])
+                if isinstance(step, str)
+            ]
             add_check(
                 checks,
-                "controller_script_present",
-                bool(artifacts["controller_script_present"]),
-                details={"path": str(controller_path) if controller_path else None},
-                missing_step=controller_step,
+                "installed_controller",
+                controller_ok,
+                details=controller_details,
+                missing_step=artifact_steps[0] if artifact_steps else None,
                 missing_steps=missing_steps,
                 evidence=evidence,
             )
-            add_check(
-                checks,
-                "bridge_directory_present",
-                bool(artifacts["bridge_directory_present"]),
-                details={"path": str(bridge_path) if bridge_path else None},
-                missing_step=bridge_step,
-                missing_steps=missing_steps,
-                evidence=evidence,
-            )
+            for step in artifact_steps[1:]:
+                if step not in missing_steps:
+                    missing_steps.append(step)
 
         doctor_result = run_command(
             fl_mcp_command(source, repo_root, "doctor", "--format", "json"),
@@ -370,37 +411,6 @@ def main() -> int:
             missing_steps=missing_steps,
             evidence=evidence,
         )
-
-        if args.mode == "live":
-            install_result = run_command(
-                fl_mcp_command(source, repo_root, "install", "--dry-run"),
-                cwd=repo_root,
-                timeout=args.timeout,
-            )
-            add_check(
-                checks,
-                "install_dry_run",
-                bool(install_result["ok"]),
-                details=install_result,
-                missing_step=(
-                    "Run `fl-mcp install --dry-run` and configure the reported bridge environment."
-                ),
-                missing_steps=missing_steps,
-                evidence=evidence,
-            )
-            controller_ok, controller_details = installed_controller_ready(install_result)
-            add_check(
-                checks,
-                "installed_controller",
-                controller_ok,
-                details=controller_details,
-                missing_step=(
-                    "Install the FL MCP Bridge controller and create its bridge directory "
-                    "before attempting live changes."
-                ),
-                missing_steps=missing_steps,
-                evidence=evidence,
-            )
 
     fastmcp_config = repo_root / "fastmcp.json"
     if source == "local" and fastmcp_config.exists() and shutil.which("uv"):

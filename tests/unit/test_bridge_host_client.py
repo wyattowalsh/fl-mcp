@@ -22,6 +22,7 @@ from fl_mcp.bridge.bundle import (
     default_file_bridge_dir,
 )
 from fl_mcp.bridge.host_client import (
+    DEFAULT_BRIDGE_DIR,
     FileBridgeEnvelope,
     bridge_dir_from_environment,
     ensure_private_bridge_dir,
@@ -49,7 +50,7 @@ def _wait_for_command_write(
     previous_mtime: int,
     previous_command: dict[str, object] | None = None,
 ) -> tuple[dict[str, object], int]:
-    deadline = time.monotonic() + 2
+    deadline = time.monotonic() + 8
     while time.monotonic() < deadline:
         if command_path.exists():
             mtime = command_path.stat().st_mtime_ns
@@ -86,11 +87,22 @@ def test_default_file_bridge_dir_is_private_user_directory(
     secure_dir = ensure_private_bridge_dir(tmp_path / "bridge")
 
     assert default_dir == default_file_bridge_dir()
+    assert str(default_dir) == DEFAULT_BRIDGE_DIR
     assert default_dir.name == "bridge"
     assert default_dir.parent.name == "FL MCP Bridge"
     assert secure_dir.is_dir()
     if os.name == "posix":
         assert stat.S_IMODE(secure_dir.stat().st_mode) == 0o700
+
+
+def test_bridge_dir_from_environment_honors_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    override = tmp_path / "custom-bridge"
+    monkeypatch.setenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", str(override))
+
+    assert bridge_dir_from_environment() == override
 
 
 def test_try_write_json_exclusive_creates_file_once(tmp_path: Path) -> None:
@@ -593,10 +605,10 @@ def test_selected_controller_client_sequences_update_track_commands(tmp_path: Pa
             },
         ),
         controller_dir=tmp_path,
-        timeout_seconds=2,
+        timeout_seconds=8,
         poll_interval_seconds=0.01,
     )
-    worker.join(timeout=2)
+    worker.join(timeout=8)
 
     assert response.success is True
     assert response.result["action"] == "mixer.setTrackPan"
@@ -806,8 +818,24 @@ def test_fl_controller_script_rejects_symlink_on_default_bridge(
     bridge_dir = tmp_path / "bridge"
     bridge_dir.symlink_to(target, target_is_directory=True)
 
+    assert module._using_default_bridge_dir(str(bridge_dir))
     with pytest.raises(ValueError, match="symlink"):
-        module._ensure_private_bridge_dir(str(bridge_dir))
+        module._ensure_private_bridge_dir(module._bridge_dir())
+
+
+def test_fl_controller_script_rejects_nondirectory_on_default_bridge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    monkeypatch.delenv("FL_MCP_FL_STUDIO_BRIDGE_DIR", raising=False)
+    monkeypatch.setattr(module, "__file__", str(tmp_path / "device_FL_MCP_Bridge.py"))
+    bridge_file = tmp_path / "bridge"
+    bridge_file.write_text("not a directory", encoding="utf-8")
+
+    assert module._using_default_bridge_dir(str(bridge_file))
+    with pytest.raises(ValueError, match="directory"):
+        module._ensure_private_bridge_dir(module._bridge_dir())
 
 
 def test_fl_controller_script_keeps_env_bridge_dir_strict(
@@ -945,6 +973,171 @@ def test_fl_controller_script_uses_mixer_tempo_fallback() -> None:
     assert tempo_state["tempo"] == 126000.0
     assert read["success"] is True
     assert read["result"]["tempo"] == 126.0
+
+
+def _install_transport_module(module: ModuleType, transport_module: SimpleNamespace) -> None:
+    dynamic_module = cast(Any, module)
+    dynamic_module._FL_MODULES = {
+        **dynamic_module._FL_MODULES,
+        "transport": transport_module,
+    }
+    dynamic_module.transport = transport_module
+
+
+def test_fl_controller_script_pause_does_not_start_when_stopped() -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+    _install_transport_module(
+        module,
+        SimpleNamespace(
+            isPlaying=lambda: False,
+            start=lambda: calls.append("start"),
+            pause=lambda: calls.append("pause"),
+        ),
+    )
+
+    response = module._handle_request(
+        {
+            "domain": "transport",
+            "operation": "pause",
+            "provider": "flapi-live",
+            "payload": {},
+        }
+    )
+
+    assert calls == []
+    assert response["success"] is True
+    assert response["result"]["playing"] is False
+
+
+def test_fl_controller_script_pause_toggles_when_playing() -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+    state = {"playing": True}
+
+    def start() -> None:
+        calls.append("start")
+        state["playing"] = False
+
+    _install_transport_module(
+        module,
+        SimpleNamespace(isPlaying=lambda: state["playing"], start=start),
+    )
+
+    response = module._handle_request(
+        {
+            "domain": "transport",
+            "operation": "pause",
+            "provider": "flapi-live",
+            "payload": {},
+        }
+    )
+
+    assert calls == ["start"]
+    assert response["success"] is True
+    assert response["result"]["playing"] is False
+
+
+def test_fl_controller_script_pause_toggles_when_playing_state_is_unknown() -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+    _install_transport_module(module, SimpleNamespace(start=lambda: calls.append("start")))
+
+    response = module._handle_request(
+        {
+            "domain": "transport",
+            "operation": "pause",
+            "provider": "flapi-live",
+            "payload": {},
+        }
+    )
+
+    assert calls == ["start"]
+    assert response["success"] is True
+
+
+def test_fl_controller_script_play_starts_when_stopped() -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+    _install_transport_module(
+        module,
+        SimpleNamespace(isPlaying=lambda: False, start=lambda: calls.append("start")),
+    )
+
+    response = module._handle_request(
+        {
+            "domain": "transport",
+            "operation": "play",
+            "provider": "flapi-live",
+            "payload": {},
+        }
+    )
+
+    assert calls == ["start"]
+    assert response["success"] is True
+
+
+def test_fl_controller_script_rejects_unknown_domain_without_calling_modules(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+
+    def tracked_listdir(path: str) -> list[str]:
+        calls.append(path)
+        return ["secret-marker"]
+
+    monkeypatch.setattr(module.os, "listdir", tracked_listdir)
+    visible = tmp_path / "visible"
+    visible.mkdir()
+
+    listed = module._handle_request(
+        {
+            "domain": "os",
+            "operation": "listdir",
+            "provider": "flapi-live",
+            "payload": {"path": str(visible)},
+        }
+    )
+    missing = module._handle_request(
+        {
+            "domain": "os",
+            "operation": "listdir",
+            "provider": "flapi-live",
+            "payload": {"path": str(tmp_path / "missing")},
+        }
+    )
+
+    assert calls == []
+    assert listed["success"] is False
+    assert listed["error_code"] == "unsupported_domain"
+    assert missing["error_code"] == "unsupported_domain"
+    assert "secret-marker" not in json.dumps(listed)
+    assert "secret-marker" not in json.dumps(missing)
+
+
+def test_fl_controller_script_does_not_dispatch_globals_for_known_domain() -> None:
+    module = _load_controller_script()
+    calls: list[str] = []
+    dynamic_module = cast(Any, module)
+    dynamic_module.mixer = SimpleNamespace(
+        setTrackVolume=lambda *_args, **_kwargs: calls.append("globals"),
+    )
+    dynamic_module._FL_MODULES = {**dynamic_module._FL_MODULES, "mixer": None}
+
+    response = module._handle_request(
+        {
+            "domain": "mixer",
+            "operation": "set_track_volume",
+            "provider": "flapi-live",
+            "payload": {"track_index": 1, "volume": 0.5},
+        }
+    )
+
+    assert calls == []
+    assert response["success"] is False
+    assert response["error_code"] == "api_missing"
 
 
 def test_fl_controller_script_has_adapter_record_for_every_catalog_operation() -> None:

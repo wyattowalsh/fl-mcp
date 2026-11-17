@@ -42,10 +42,16 @@ python -m fl_mcp.bridge.host_client
 
 `fl-mcp install --dry-run` prints command strings for the current Python
 environment, stable `uvx` command templates, the private bridge directory, and
-the package-resolved controller script source and target path. The bundled MIDI
-script defaults to a private `bridge/` directory next to the selected script, so
-the installer reports that same FL-writable path for
-`FL_MCP_FL_STUDIO_BRIDGE_DIR`. Prefer
+the package-resolved controller script source and target path. Install, doctor,
+and `host_client` default `FL_MCP_FL_STUDIO_BRIDGE_DIR` to the hardware
+`.../FL MCP Bridge/bridge` directory under the active FL Studio user-data
+folder, normally
+`~/Documents/Image-Line/FL Studio/Settings/Hardware/FL MCP Bridge/bridge`
+or the `Image-Line 2` equivalent. When `FL_MCP_FL_STUDIO_BRIDGE_DIR` is unset
+and the script is running from its own folder, the MIDI script defaults to the
+`bridge/` directory beside that file. After the script is installed into the
+hardware folder, that script-local directory is the same hardware `bridge/`
+path. Prefer
 `uvx_environment` for MCP client configuration because it avoids depending on a
 specific uv cache interpreter path:
 
@@ -74,9 +80,9 @@ bridge directory but skips POSIX ownership and `0700` enforcement because those
 metadata checks are unavailable—treat Windows bridge directories as **best-effort
 private** and keep them under a per-user path. `FL_MCP_FL_STUDIO_BRIDGE_DIR` can
 override the location, but POSIX safety checks still apply when the platform
-supports them. If the variable is not available inside FL Studio,
-the MIDI script uses its script-local `bridge/` directory. Some FL Studio macOS
-hosts raise low-level `SystemError` from POSIX metadata calls even when normal
+supports them. If the variable is unset and the script is running from its own
+folder, the MIDI script uses the `bridge/` directory beside that file. Some FL Studio
+macOS hosts raise low-level `SystemError` from POSIX metadata calls even when normal
 file writes work. For that default script-local directory only, the MIDI script
 continues with the MCP-side `host_client` owning the private-directory check.
 Set `FL_MCP_FL_STUDIO_BRIDGE_LOG=1` before launching FL Studio if you need a
@@ -146,15 +152,14 @@ deduplication strategy differs by adapter.
 ### Transport play and pause
 
 The compact surface exposes distinct `transport.play` and `transport.pause`
-operations so agents can express intent clearly. The bundled
-`device_FL_MCP_Bridge.py` and selected-controller adapter both invoke FL
-Studio's `transport.start()` for **both** operations—FL's start API is a
-play/pause **toggle**, not separate play-only and pause-only calls.
-`transport.stop` maps to `transport.stop()`. After transport mutations, read
-back with `transport.get_state` or `transport.get_playback_state` to confirm the
-observed playing flag. At the MCP layer, `transport.pause` is documented as
-pausing without rewinding the playhead; actual playhead behavior follows FL
-Studio host semantics.
+operations so agents can express intent clearly. FL Studio's `transport.start()`
+is a play/pause toggle, not separate play-only and pause-only calls. The bundled
+`device_FL_MCP_Bridge.py` calls `transport.start()` for `transport.play`. For
+`transport.pause`, it does not call `start` when that transport module reports
+playback is already stopped. If the host does not report playback state, pause
+still calls `start`. `transport.stop` maps to `transport.stop()`. After transport
+mutations, read back with `transport.get_state`. Actual playhead behavior follows
+FL Studio host semantics.
 
 The FL Studio script writes `response-{request_id}.json` containing the same
 `BridgeLiveResponse` schema described below. The MCP-side `host_client` writes

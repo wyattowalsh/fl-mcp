@@ -489,10 +489,6 @@ def _normalize_live_value(domain: str, operation: str, payload: dict, value) -> 
 def _execute_forced_live_adapter(request: dict, payload: dict) -> dict:
     domain = str(request.get("domain", ""))
     operation = str(request.get("operation", ""))
-    path_error = _path_error(request, payload)
-    if path_error is not None:
-        return path_error
-
     if domain not in _DOMAIN_MODULES:
         return _response(
             request,
@@ -501,6 +497,10 @@ def _execute_forced_live_adapter(request: dict, payload: dict) -> dict:
             message=f"Domain '{domain}' is not supported by the FL MCP Bridge.",
             result={"operation_id": f"{domain}.{operation}"},
         )
+
+    path_error = _path_error(request, payload)
+    if path_error is not None:
+        return path_error
 
     candidates = _candidate_records(domain, operation)
     metadata = _attempt_metadata(candidates)
@@ -541,7 +541,11 @@ def _execute_forced_live_adapter(request: dict, payload: dict) -> dict:
         except Exception:
             pass
 
-    if domain == "transport" and operation == "pause" and not _is_playing():
+    if (
+        domain == "transport"
+        and operation == "pause"
+        and _observed_playing(_fl_module("transport")) is False
+    ):
         return _response(
             request,
             success=True,
@@ -671,6 +675,22 @@ def _set_tempo(value: float) -> None:
         setter(setter_value)
     except TypeError:
         setter(setter_value, 0)
+
+
+def _observed_playing(module) -> bool | None:
+    """Return playback state when this transport module exposes it.
+
+    ``None`` means the host did not report a state. Pause must not treat that
+    as stopped, because ``transport.start`` is FL Studio's play/pause toggle.
+    """
+
+    getter = _first_callable(module, ("isPlaying",))
+    if getter is None:
+        return None
+    try:
+        return bool(getter())
+    except Exception:
+        return None
 
 
 def _is_playing() -> bool:

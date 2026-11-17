@@ -14,9 +14,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field, ValidationError
 
+from fl_mcp.bridge.bundle import default_file_bridge_dir
 from fl_mcp.schemas.bridge import BridgeLiveRequest, BridgeLiveResponse
 
 BRIDGE_DIR_ENV = "FL_MCP_FL_STUDIO_BRIDGE_DIR"
+DEFAULT_BRIDGE_DIR = str(default_file_bridge_dir())
 POLL_INTERVAL_ENV = "FL_MCP_FL_STUDIO_BRIDGE_POLL_SECONDS"
 DEFAULT_POLL_INTERVAL_SECONDS = 0.05
 DEFAULT_FILE_BRIDGE_TIMEOUT_SECONDS = 15.0
@@ -227,8 +229,6 @@ def bridge_dir_from_environment() -> Path:
     configured = os.getenv(BRIDGE_DIR_ENV)
     if configured:
         return Path(configured).expanduser()
-    from fl_mcp.bridge.bundle import default_file_bridge_dir
-
     return default_file_bridge_dir()
 
 

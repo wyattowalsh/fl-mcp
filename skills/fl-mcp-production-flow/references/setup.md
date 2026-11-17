@@ -43,6 +43,12 @@ Mock workflows require:
 Live workflows also require:
 
 - `fl-mcp install --dry-run` succeeds;
+- the installer-reported controller script target file exists;
+- the installer-reported bridge directory exists;
+- `safe_to_attempt_live` is false, with a `missing_steps` entry, when that
+  controller script or bridge directory is missing;
+- `fl-mcp doctor --format json` is not an error. Health `warning` still counts
+  as ok for the doctor check and does not by itself allow a live attempt;
 - the reported bridge environment is configured in the MCP client;
 - the FL Studio controller script is copied and selected when actual-app work is
   required.
