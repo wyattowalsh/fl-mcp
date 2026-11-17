@@ -48,11 +48,11 @@ final class HelperViewModel: ObservableObject {
             switch self {
             case .executionFailed(let status, let stderr):
                 if stderr.isEmpty {
-                    return "diagnostics shell command failed with exit code \(status)"
+                    return "fl-mcp doctor failed with exit code \(status)"
                 }
-                return "diagnostics shell command failed with exit code \(status): \(stderr)"
+                return "fl-mcp doctor failed with exit code \(status): \(stderr)"
             case .emptyOutput:
-                return "diagnostics shell command produced no JSON output"
+                return "fl-mcp doctor produced no JSON output"
             }
         }
     }
@@ -70,12 +70,16 @@ final class HelperViewModel: ObservableObject {
         self.commandRunner = commandRunner
     }
 
+    nonisolated static func doctorCommandArguments() -> [String] {
+        ["uv", "run", "fl-mcp", "doctor", "--format", "json"]
+    }
+
     func fetchStatus() {
-        runDiagnosticsShell(endpoint: "status")
+        runDoctor(endpoint: "status")
     }
 
     func runDiagnostics() {
-        runDiagnosticsShell(endpoint: "diagnostics")
+        runDoctor(endpoint: "diagnostics")
     }
 
     func processPayloadData(_ data: Data, sourceEndpoint: String) throws {
@@ -98,11 +102,31 @@ final class HelperViewModel: ObservableObject {
         return try JSONDecoder().decode(HelperStatusPayload.self, from: data)
     }
 
-    private func runDiagnosticsShell(endpoint: String) {
+    /// Returns doctor stdout when it matches the status payload, including after a non-zero exit.
+    /// A non-zero exit whose stdout is not that payload is rewritten as a failed `doctor` check.
+    nonisolated static func commandResultData(
+        stdout: Data,
+        exitCode: Int,
+        stderr: String
+    ) throws -> Data {
+        if isStatusPayload(stdout) {
+            return stdout
+        }
+        if exitCode != 0 {
+            return try failedDoctorCheckData(exitCode: exitCode, stderr: stderr)
+        }
+        if stdout.isEmpty {
+            throw CommandExecutionError.emptyOutput
+        }
+        _ = try decodePayload(from: stdout)
+        return stdout
+    }
+
+    private func runDoctor(endpoint: String) {
         isRunning = true
         lastErrorText = nil
         statusText = "Running \(endpoint)..."
-        logLines.append("Invoking: fl-mcp doctor --format json")
+        logLines.append("Invoking: \(Self.doctorCommandArguments().joined(separator: " "))")
 
         let runner = commandRunner
         Task {
@@ -150,12 +174,43 @@ final class HelperViewModel: ObservableObject {
         }.value
     }
 
-    private nonisolated static func defaultCommandRunner(endpoint: String) throws -> Data {
+    private nonisolated static func isStatusPayload(_ data: Data) -> Bool {
+        guard !data.isEmpty else {
+            return false
+        }
+        return (try? JSONDecoder().decode(StrictHelperStatusPayload.self, from: data)) != nil
+    }
+
+    private nonisolated static func failedDoctorCheckData(exitCode: Int, stderr: String) throws -> Data {
+        let detail: String
+        if stderr.isEmpty {
+            detail = "fl-mcp doctor exited with code \(exitCode) and did not return a status payload"
+        } else {
+            detail = "fl-mcp doctor exited with code \(exitCode) and did not return a status payload: \(stderr)"
+        }
+        let payload = FailedDoctorCheckPayload(
+            service: "fl-mcp",
+            health: "error",
+            timestamp: ISO8601DateFormatter().string(from: Date()),
+            endpoint: "fl-mcp doctor --format json",
+            checks: [
+                FailedDoctorCheckPayload.Check(name: "doctor", state: "error", details: detail)
+            ],
+            logs: [detail],
+            errors: [detail]
+        )
+        do {
+            return try JSONEncoder().encode(payload)
+        } catch {
+            throw CommandExecutionError.executionFailed(status: exitCode, stderr: stderr)
+        }
+    }
+
+    private nonisolated static func defaultCommandRunner(_: String) throws -> Data {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.currentDirectoryURL = repositoryRootURL()
-        process.arguments = ["uv", "run", "fl-mcp", "doctor", "--format", "json"]
-        _ = endpoint
+        process.arguments = doctorCommandArguments()
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
@@ -171,15 +226,11 @@ final class HelperViewModel: ObservableObject {
             in: .whitespacesAndNewlines
         )
 
-        if process.terminationStatus != 0 {
-            if (try? HelperViewModel.decodePayload(from: stdoutData)) == nil {
-                throw CommandExecutionError.executionFailed(
-                    status: Int(process.terminationStatus),
-                    stderr: stderrText
-                )
-            }
-        }
-        return stdoutData
+        return try commandResultData(
+            stdout: stdoutData,
+            exitCode: Int(process.terminationStatus),
+            stderr: stderrText
+        )
     }
 
     private nonisolated static func repositoryRootURL() -> URL {
@@ -188,4 +239,36 @@ final class HelperViewModel: ObservableObject {
             .deletingLastPathComponent() // Sources
             .deletingLastPathComponent() // helper
     }
+}
+
+private struct StrictHelperStatusPayload: Decodable {
+    struct Check: Decodable {
+        let name: String
+        let state: String
+        let details: String
+    }
+
+    let service: String
+    let health: String
+    let timestamp: String
+    let endpoint: String
+    let checks: [Check]
+    let logs: [String]
+    let errors: [String]
+}
+
+private struct FailedDoctorCheckPayload: Encodable {
+    struct Check: Encodable {
+        let name: String
+        let state: String
+        let details: String
+    }
+
+    let service: String
+    let health: String
+    let timestamp: String
+    let endpoint: String
+    let checks: [Check]
+    let logs: [String]
+    let errors: [String]
 }

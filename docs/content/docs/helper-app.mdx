@@ -28,14 +28,13 @@ The helper-facing payload contract is documented in `docs/interfaces.md` and
 implemented in `src/fl_mcp/interfaces/status.py`. Keep those files aligned when
 helper endpoints or payload fields change.
 
-The current CLI-facing commands are:
+Check Status and Run Diagnostics both run:
 
 ```bash
-uv run fl-mcp diagnostics shell --endpoint status
-uv run fl-mcp diagnostics shell --endpoint diagnostics
 uv run fl-mcp doctor --format json
-uv run fl-mcp install --dry-run
 ```
+
+`fl-mcp install --dry-run` remains the install-hint source. `fl-mcp diagnostics shell` is a fixed CLI stub and is not what the helper window calls.
 
 ## Validation
 
