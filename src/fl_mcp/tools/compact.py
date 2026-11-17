@@ -772,7 +772,7 @@ def fl_status(runtime_config: RuntimeConfig | None = None) -> dict[str, object]:
         },
         providers=[dict(status) for status in registry.statuses()],
         bridge={
-            "mode": "provider-routed",
+            "mode": DEFAULT_BRIDGE.mode,
             "default_provider_matrix_size": len(PROVIDER_MATRIX),
         },
         tasks={

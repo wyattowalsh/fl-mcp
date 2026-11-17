@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security Disclosure
-    url: https://github.com/OWNER/REPO/security/policy
+    url: https://github.com/wyattowalsh/fl-mcp/security/policy
     about: Please report security vulnerabilities through private channels.
   - name: Discussions
-    url: https://github.com/OWNER/REPO/discussions
+    url: https://github.com/wyattowalsh/fl-mcp/discussions
     about: Ask and answer questions in GitHub Discussions.

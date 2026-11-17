@@ -318,3 +318,22 @@ def test_live_harness_bridge_command_executes_read_and_mutation() -> None:
     assert mutation_result.success is True
     assert mutation_result.bridge_mode == "live"
     assert mutation_result.provider == "flapi-live"
+
+
+def test_live_unknown_catalog_operation_does_not_spawn_bridge(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_if_called(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise AssertionError("unknown catalog operations must not spawn the live bridge")
+
+    monkeypatch.setattr("fl_mcp.bridge.fl_studio.subprocess.run", fail_if_called)
+    bridge = FLStudioBridge(mode="live", live_command="fl-mcp-bridge")
+    result = bridge.execute_operation(
+        domain="mixer",
+        operation="not_a_catalog_operation",
+        payload={},
+    )
+
+    assert result.success is False
+    assert result.error_code == "unsupported_operation"
+    assert result.bridge_mode == "live"

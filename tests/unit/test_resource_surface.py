@@ -10,10 +10,18 @@ from fl_mcp.resources.surface import (
     provider_matrix,
     render_job,
     runtime_capabilities,
+    runtime_health,
 )
 
 
-def test_project_snapshot_returns_dict_with_data_key() -> None:
+def test_runtime_health_includes_a_timestamp() -> None:
+    result = runtime_health()
+    data = result["data"]
+    assert result["resource"] == "runtime://health"
+    assert isinstance(data, dict)
+    assert data["status"] in {"ok", "warning", "error", "degraded"}
+    assert isinstance(data["timestamp"], str)
+    assert data["timestamp"] != ""
     result = project_snapshot()
     assert isinstance(result, dict)
     assert "data" in result

@@ -36,6 +36,12 @@ jobs:
                   "Version mismatch: workflow input version "
                   f"'{expected}' != pyproject project.version '{actual}'."
               )
+          import re
+          if re.search(r"(?i)(?:a|b|rc|alpha|beta)\d+", expected) is None:
+              raise SystemExit(
+                  "Prerelease workflow refuses a stable version. "
+                  "Use a prerelease such as 0.1.0rc1."
+              )
           print(f"Version gate passed: {actual}")
           PY
       - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39  # v8.2.0

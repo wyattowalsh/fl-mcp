@@ -398,6 +398,23 @@ class FLStudioBridge:
             )
 
         if self.mode == "live":
+            from fl_mcp.operations import find_operation_for_change
+
+            if domain in DOMAINS and find_operation_for_change(domain, operation) is None:
+                return BridgeExecutionResult(
+                    domain=domain,
+                    operation=operation,
+                    success=False,
+                    message=(
+                        f"Operation '{domain}.{operation}' is not in the catalog "
+                        "and was not sent to the live bridge."
+                    ),
+                    error_code="unsupported_operation",
+                    execution_id=None,
+                    bridge_mode="live",
+                    provider=provider,
+                    result={},
+                )
             return self._execute_live(
                 domain=domain,
                 operation=operation,

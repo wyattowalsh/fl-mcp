@@ -5,7 +5,7 @@ from collections.abc import Sequence
 
 from fl_mcp.graph.model import ProjectGraph
 from fl_mcp.providers.runtime import get_provider_registry
-from fl_mcp.runtime.health import RuntimeHealth
+from fl_mcp.runtime.health import health_payload
 from fl_mcp.runtime.state import get_runtime_state
 from fl_mcp.schemas.runtime_surface import (
     AudioAnalysisResource,
@@ -48,7 +48,9 @@ def project_arrangement() -> dict[str, object]:
 
 def runtime_health() -> dict[str, object]:
     """Return the runtime health resource."""
-    return {"resource": "runtime://health", "data": RuntimeHealth().model_dump()}
+    from fl_mcp.config import RuntimeConfig
+
+    return {"resource": "runtime://health", "data": health_payload(RuntimeConfig())}
 
 
 def runtime_capabilities() -> dict[str, object]:
